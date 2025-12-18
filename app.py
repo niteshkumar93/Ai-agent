@@ -11,28 +11,28 @@ from baseline_manager import (
     save_baseline,
     compare_with_baseline,
     get_baseline_history,
-    rollback_baseline
+    rollback_baseline,
 )
 
 # -----------------------------------------------------------
-# 🟦 SESSION STATE (TOP LEVEL – NEVER INDENT)
+# 🟦 SESSION STATE (TOP LEVEL)
 # -----------------------------------------------------------
 if "df" not in st.session_state:
     st.session_state.df = None
 if "show_dashboard" not in st.session_state:
     st.session_state.show_dashboard = False
-if "show_export" not in st.session_state:
-    st.session_state.show_export = False
 if "baseline_saved" not in st.session_state:
     st.session_state.baseline_saved = False
+if "rollback_done" not in st.session_state:
+    st.session_state.rollback_done = False
 
 # -----------------------------------------------------------
-# 🌍 ENV DETECTION
+# 🌍 ENV
 # -----------------------------------------------------------
 IS_CLOUD = os.getenv("STREAMLIT_CLOUD") == "true"
 
 # -----------------------------------------------------------
-# 🎨 THEME HANDLER
+# 🎨 THEME
 # -----------------------------------------------------------
 def apply_theme(mode):
     if mode == "Dark":
@@ -63,7 +63,7 @@ st.set_page_config(
 # ⚙ SIDEBAR
 # -----------------------------------------------------------
 with st.sidebar.expander("⚙ Settings", expanded=True):
-    theme_choice = st.radio("Theme Mode:", ["Dark", "Light"], index=0)
+    theme_choice = st.radio("Theme Mode", ["Dark", "Light"], index=0)
     use_ai = st.checkbox("🤖 Use AI Analysis", value=False)
 
     project_name = st.text_input(
@@ -73,7 +73,7 @@ with st.sidebar.expander("⚙ Settings", expanded=True):
 
     admin_key = st.text_input(
         "🔐 Admin Key (Required for Baseline / Rollback)",
-        type="password"
+        type="password",
     )
 
     if IS_CLOUD:
@@ -90,7 +90,7 @@ st.markdown("<h1 class='title-text'>🚀 Provar AI XML Analyzer</h1>", unsafe_al
 st.write("Upload one or more **JUnit XML Reports** below:")
 
 # -----------------------------------------------------------
-# 📄 FILE UPLOAD
+# 📄 UPLOAD
 # -----------------------------------------------------------
 uploaded_files = st.file_uploader(
     "📄 Upload XML Reports",
@@ -101,87 +101,68 @@ uploaded_files = st.file_uploader(
 # -----------------------------------------------------------
 # 🔧 HELPERS
 # -----------------------------------------------------------
-def shorten_project_cache_path(full_path: str) -> str:
-    if not full_path:
+def shorten_project_cache_path(path: str) -> str:
+    if not path:
         return ""
     marker = "Jenkins\\"
-    if marker in full_path:
-        return full_path.split(marker, 1)[1]
-    parts = full_path.replace("/", "\\").split("\\")
-    return "\\".join(parts[-2:])
+    if marker in path:
+        return path.split(marker, 1)[1]
+    return path.replace("/", "\\").split("\\")[-1]
 
 # -----------------------------------------------------------
-# 🧠 MAIN LOGIC
+# 🧠 ANALYZE
 # -----------------------------------------------------------
-if uploaded_files:
-    st.success(f"{len(uploaded_files)} file(s) uploaded.")
+if uploaded_files and st.button("🔍 Analyze XML Reports", use_container_width=True):
+    st.session_state.show_dashboard = False
+    st.session_state.rollback_done = False
+    st.session_state.baseline_saved = False
 
-    if st.button("🔍 Analyze XML Reports", use_container_width=True):
-        st.session_state.show_dashboard = False
-        st.session_state.show_export = False
-        st.session_state.baseline_saved = False
+    all_failures = []
 
-        all_failures = []
+    for file in uploaded_files:
+        failures = extract_failed_tests(file)
+        for f in failures:
+            all_failures.append({
+                "testcase": f["name"],
+                "testcase_path": f.get(
+                    "testcase_path",
+                    f["name"].replace(".", "/")
+                ),
+                "error": f["error"],
+                "details": f["details"],
+                "source": file.name,
+                "webBrowserType": f.get("webBrowserType", "Unknown"),
+                "projectCachePath": shorten_project_cache_path(
+                    f.get("projectCachePath", "")
+                ),
+            })
 
-        for file in uploaded_files:
-            st.info(f"Extracting failures from **{file.name}** ...")
-            failures = extract_failed_tests(file)
+    new_failures, existing_failures = compare_with_baseline(
+        project_name,
+        all_failures,
+    )
 
-            for f in failures:
-                all_failures.append({
-                    "testcase": f["name"],
-                    "testcase_path": f.get(
-                        "testcase_path",
-                        f["name"].replace(".", "/")
-                    ),
-                    "error": f["error"],
-                    "details": f["details"],
-                    "source": file.name,
-                    "webBrowserType": f.get("webBrowserType", "Unknown"),
-                    "projectCachePath": shorten_project_cache_path(
-                        f.get("projectCachePath", "")
-                    )
-                })
+    st.subheader("📊 Baseline Comparison")
+    st.success(f"🆕 New Failures: {len(new_failures)}")
+    st.info(f"♻️ Existing Failures: {len(existing_failures)}")
 
-        # -------------------------------
-        # BASELINE COMPARISON
-        # -------------------------------
-        new_failures, existing_failures = compare_with_baseline(
-            project_name,
-            all_failures
+    progress = st.progress(0)
+    results = []
+
+    for i, f in enumerate(new_failures):
+        progress.progress(int((i + 1) / max(len(new_failures), 1) * 100))
+        f["analysis"] = (
+            generate_ai_summary(f["testcase"], f["error"], f["details"])
+            if use_ai else "⏭ AI Skipped"
         )
+        results.append(f)
+        time.sleep(0.03)
 
-        st.subheader("📊 Baseline Comparison")
-        st.success(f"🆕 New Failures: {len(new_failures)}")
-        st.info(f"♻️ Existing Failures: {len(existing_failures)}")
-
-        # -------------------------------
-        # AI ANALYSIS (ONLY NEW FAILURES)
-        # -------------------------------
-        progress = st.progress(0)
-        step = 100 / len(new_failures) if new_failures else 100
-        results = []
-
-        for i, failure in enumerate(new_failures):
-            progress.progress(int((i + 1) * step))
-
-            if use_ai:
-                failure["analysis"] = generate_ai_summary(
-                    testcase=failure["testcase"],
-                    error_message=failure["error"],
-                    details=failure["details"]
-                )
-            else:
-                failure["analysis"] = "⏭ AI Skipped (AI is turned OFF)"
-
-            results.append(failure)
-            time.sleep(0.05)
-
-        st.session_state.df = pd.DataFrame(results)
-        st.success("🎉 Analysis Completed!")
+    st.session_state.df = pd.DataFrame(results)
+    st.success("🎉 Analysis Completed!")
 
 # -----------------------------------------------------------
-# 🧾 REPORT + ACTIONS
+# 🧾 REPORT
 # -----------------------------------------------------------
 if st.session_state.df is not None and not st.session_state.df.empty:
     df = st.session_state.df
@@ -194,78 +175,71 @@ if st.session_state.df is not None and not st.session_state.df.empty:
 
     st.subheader("📌 New Failure Analysis")
     for _, row in df.iterrows():
-        with st.expander(f"🔹 {row['testcase']} — 📄 {row['source']}"):
-            st.markdown(f"**📁 Testcase Path:** `{row['testcase_path']}`")
-            st.markdown(f"**❗ Error:** {row['error']}")
-            st.markdown(f"**📄 Details:** {row['details']}")
-            st.markdown("### 🤖 AI Summary")
-            st.write(row["analysis"])
+        with st.expander(f"🔹 {row['testcase']}"):
+            st.write("❗ Error:", row["error"])
+            st.write("📄 Details:", row["details"])
+            st.write("🤖 AI:", row["analysis"])
 
-    # -------------------------------
-    # 🧱 SAVE BASELINE (ADMIN ONLY)
-    # -------------------------------
+    # -------------------------------------------------------
+    # 🧱 SAVE BASELINE
+    # -------------------------------------------------------
     if st.button("🧱 Mark this report as Baseline"):
-        try:
-            save_baseline(
-                project_name,
-                df.to_dict(orient="records"),
-                admin_key
-            )
-            st.session_state.baseline_saved = True
-            st.success("✅ Baseline saved & committed to GitHub")
-        except Exception as e:
-            st.error(str(e))
-
-    # -------------------------------
-    # 🕒 BASELINE HISTORY
-    # -------------------------------
-    st.subheader("🕒 Baseline History")
-    history = get_baseline_history(project_name)
-
-    if not history:
-        st.info("No baseline history found")
-    else:
-        commit_map = {}
-        for h in history[:5]:
-            label = f"{h['commit']['message']} | {h['commit']['author']['date']}"
-            commit_map[label] = h["sha"]
-
-        selected_commit = st.selectbox(
-            "Select baseline version",
-            commit_map.keys()
-        )
-
-        # -------------------------------
-        # 🔁 ROLLBACK (ADMIN ONLY)
-        # -------------------------------
-        if st.button("⏪ Rollback to selected baseline"):
+        if not admin_key:
+            st.error("Admin key required")
+        else:
             try:
-                rollback_baseline(
-                    project_name,
-                    commit_map[selected_commit],
-                    admin_key
-                )
-                st.success("✅ Baseline rolled back successfully")
+                save_baseline(project_name, df.to_dict("records"), admin_key)
+                st.session_state.baseline_saved = True
             except Exception as e:
                 st.error(str(e))
 
-    # -------------------------------
+    if st.session_state.baseline_saved:
+        st.success("✅ Baseline saved & committed to GitHub")
+
+    # -------------------------------------------------------
+    # 🕒 HISTORY + ROLLBACK
+    # -------------------------------------------------------
+    st.subheader("🕒 Baseline History")
+    history = get_baseline_history(project_name)
+
+    if history:
+        commit_map = {
+            f"{h['commit']['message']} | {h['commit']['author']['date']}": h["sha"]
+            for h in history[:5]
+        }
+
+        selected = st.selectbox("Select baseline version", commit_map.keys())
+
+        if st.button("⏪ Rollback to selected baseline"):
+            if not admin_key:
+                st.error("Admin key required")
+            else:
+                rollback_baseline(project_name, commit_map[selected], admin_key)
+                st.session_state.rollback_done = True
+
+    else:
+        st.info("No baseline history found")
+
+    if st.session_state.rollback_done:
+        st.success("✅ Rollback successful")
+
+    # -------------------------------------------------------
     # 📊 DASHBOARD
-    # -------------------------------
+    # -------------------------------------------------------
     if st.button("📊 Show Dashboard"):
         st.session_state.show_dashboard = True
+
     if st.session_state.show_dashboard:
         render_dashboard(df)
 
-    # -------------------------------
+    # -------------------------------------------------------
     # ⬇ EXPORT
-    # -------------------------------
-    if st.button("⬇ Export to Excel (.xlsx)"):
-        buffer = io.BytesIO()
-        df.to_excel(buffer, index=False)
-        st.download_button(
-            "📥 Download XLSX",
-            buffer.getvalue(),
-            file_name="Provar_AI_Analysis.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
+    # -------------------------------------------------------
+    buffer = io.BytesIO()
+    df.to_excel(buffer, index=False)
+    st.download_button(
+        "⬇ Download Excel",
+        buffer.getvalue(),
+        "Provar_AI_Analysis.xlsx",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )

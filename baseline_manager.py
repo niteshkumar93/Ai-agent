@@ -13,11 +13,46 @@ BASELINE_DIR = "baselines"
 GITHUB_REPO = "niteshkumar93/Ai-agent"
 
 # -----------------------------------------------------------
-# PATH HELPERS
+# BASELINE LIST (KNOWN PROJECTS)
+# -----------------------------------------------------------
+KNOWN_PROJECTS = [
+    "VF_Lightning_Windows",
+    "Regmain-Flexi",
+    "Date_Time",
+    "CPQ_Classic",
+    "CPQ_Lightning",
+    "QAM_Lightning",
+    "QAM_Classic",
+    "Internationalization_pipeline",
+    "Lightning_Console_LogonAs",
+    "DynamicForm",
+    "Classic_Console_LogonAS",
+    "LWC_Pipeline",
+    "Regmain_LS_Windows",
+    "Regmain_LC_Windows",
+    "Regmain-VF",
+    "FSL",
+    "HYBRID_AUTOMATION_Pipeline",
+]
+
+# -----------------------------------------------------------
+# HELPERS
 # -----------------------------------------------------------
 def _get_baseline_path(project_name: str) -> str:
     os.makedirs(BASELINE_DIR, exist_ok=True)
     return os.path.join(BASELINE_DIR, f"{project_name}.json")
+
+def list_available_baselines() -> List[str]:
+    if not os.path.exists(BASELINE_DIR):
+        return []
+    return [
+        f.replace(".json", "")
+        for f in os.listdir(BASELINE_DIR)
+        if f.endswith(".json")
+    ]
+
+def baseline_exists(project_name: str) -> bool:
+    return os.path.exists(_get_baseline_path(project_name))
 
 # -----------------------------------------------------------
 # LOAD BASELINE (SAFE)
@@ -26,7 +61,6 @@ def load_baseline(project_name: str) -> List[Dict]:
     path = _get_baseline_path(project_name)
     if not os.path.exists(path) or os.path.getsize(path) == 0:
         return []
-
     try:
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
@@ -37,25 +71,22 @@ def load_baseline(project_name: str) -> List[Dict]:
 # SAVE BASELINE (ADMIN ONLY)
 # -----------------------------------------------------------
 def save_baseline(project_name: str, failures: List[Dict], admin_key: str):
-    expected_key = os.getenv("BASELINE_ADMIN_KEY")
-
-    if not expected_key or admin_key != expected_key:
-        raise PermissionError("❌ Admin key invalid. Baseline write blocked.")
+    expected = os.getenv("BASELINE_ADMIN_KEY")
+    if admin_key != expected:
+        raise PermissionError("❌ Admin key invalid")
 
     path = _get_baseline_path(project_name)
-
     with open(path, "w", encoding="utf-8") as f:
         json.dump(failures, f, indent=2)
 
     _commit_to_github(project_name, failures)
 
 # -----------------------------------------------------------
-# GITHUB COMMIT
+# GITHUB COMMIT (SAFE)
 # -----------------------------------------------------------
 def _commit_to_github(project_name: str, failures: List[Dict]):
     token = os.getenv("GITHUB_TOKEN")
     if not token:
-        print("⚠️ GITHUB_TOKEN missing → skipping GitHub commit")
         return
 
     file_path = f"{BASELINE_DIR}/{project_name}.json"
@@ -79,24 +110,19 @@ def _commit_to_github(project_name: str, failures: List[Dict]):
         "message": f"Update baseline for {project_name}",
         "content": content,
     }
-
     if sha:
         payload["sha"] = sha
 
     requests.put(url, headers=headers, json=payload)
 
 # -----------------------------------------------------------
-# COMPARE BASELINE
+# COMPARE
 # -----------------------------------------------------------
 def compare_with_baseline(project_name: str, current_failures: List[Dict]):
     baseline = load_baseline(project_name)
-
-    baseline_keys = {
-        f"{b['testcase']}|{b['error']}" for b in baseline
-    }
+    baseline_keys = {f"{b['testcase']}|{b['error']}" for b in baseline}
 
     new_failures, existing_failures = [], []
-
     for f in current_failures:
         key = f"{f['testcase']}|{f['error']}"
         (existing_failures if key in baseline_keys else new_failures).append(f)
@@ -104,42 +130,16 @@ def compare_with_baseline(project_name: str, current_failures: List[Dict]):
     return new_failures, existing_failures
 
 # -----------------------------------------------------------
-# BASELINE HISTORY (COMMITS)
+# HISTORY
 # -----------------------------------------------------------
 def get_baseline_history(project_name: str):
     token = os.getenv("GITHUB_TOKEN")
     if not token:
         return []
 
-    file_path = f"{BASELINE_DIR}/{project_name}.json"
     url = f"https://api.github.com/repos/{GITHUB_REPO}/commits"
-
+    params = {"path": f"{BASELINE_DIR}/{project_name}.json"}
     headers = {"Authorization": f"token {token}"}
-    params = {"path": file_path}
 
     r = requests.get(url, headers=headers, params=params)
     return r.json() if r.status_code == 200 else []
-
-# -----------------------------------------------------------
-# ROLLBACK BASELINE
-# -----------------------------------------------------------
-def rollback_baseline(project_name: str, commit_sha: str, admin_key: str):
-    expected_key = os.getenv("BASELINE_ADMIN_KEY")
-    if admin_key != expected_key:
-        raise PermissionError("❌ Admin key invalid")
-
-    token = os.getenv("GITHUB_TOKEN")
-    if not token:
-        raise RuntimeError("GITHUB_TOKEN missing")
-
-    file_path = f"{BASELINE_DIR}/{project_name}.json"
-    url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{file_path}"
-
-    headers = {"Authorization": f"token {token}"}
-    params = {"ref": commit_sha}
-
-    r = requests.get(url, headers=headers, params=params)
-    content = base64.b64decode(r.json()["content"]).decode("utf-8")
-
-    with open(_get_baseline_path(project_name), "w", encoding="utf-8") as f:
-        f.write(content)
