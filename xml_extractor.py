@@ -4,24 +4,34 @@ def extract_failed_tests(xml_file):
     tree = ET.parse(xml_file)
     root = tree.getroot()
 
-    failed_tests = []
-    for tc in root.findall("testcase"):
-        name = tc.get("name")
-        classname = tc.get("classname")
-        time = tc.get("time")
+    # --------------------------------------------------
+    # GLOBAL PROPERTIES (common for full report)
+    # --------------------------------------------------
+    properties = {}
+    props_node = root.find("properties")
 
-        failure = tc.find("failure")
+    if props_node is not None:
+        for prop in props_node.findall("property"):
+            properties[prop.attrib.get("name")] = prop.attrib.get("value")
 
+    web_browser = properties.get("webBrowserType", "Unknown")
+    project_cache_path = properties.get("projectCachePath", "")
+
+    failures = []
+
+    # --------------------------------------------------
+    # FAILED TESTCASES
+    # --------------------------------------------------
+    for testcase in root.findall("testcase"):
+        failure = testcase.find("failure")
         if failure is not None:
-            error_message = failure.get("message") or "Execution failed"
-            details = failure.text.strip() if failure.text else ""
-
-            failed_tests.append({
-                "name": name,               # <-- required by AI engine
-                "classname": classname,
-                "time": time,
-                "error": error_message,     # <-- required by AI engine
-                "details": details,         # <-- used in Jira text
+            failures.append({
+                "name": testcase.attrib.get("name"),
+                "testcase_path": testcase.attrib.get("classname"),
+                "error": failure.attrib.get("message", "Execution failed"),
+                "details": (failure.text or "").strip(),
+                "webBrowserType": web_browser,
+                "projectCachePath": project_cache_path
             })
 
-    return failed_tests
+    return failures

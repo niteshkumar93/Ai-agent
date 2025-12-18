@@ -2,25 +2,30 @@ import streamlit as st
 import pandas as pd
 import time
 import io
-import os   # ✅ NEW
+import os
 
 from xml_extractor import extract_failed_tests
 from ai_reasoner import generate_ai_summary
 from dashboard import render_dashboard
+from baseline_manager import (
+    save_baseline,
+    compare_with_baseline,
+    load_baseline
+)
 
 # -----------------------------------------------------------
-# 🟦 SESSION STATE (Fix 3 – Dashboard Memory)
+# 🟦 SESSION STATE
 # -----------------------------------------------------------
 if "show_dashboard" not in st.session_state:
     st.session_state.show_dashboard = False
 
 # -----------------------------------------------------------
-# 🌍 ENV DETECTION (Local vs Cloud)
+# 🌍 ENV DETECTION
 # -----------------------------------------------------------
 IS_CLOUD = os.getenv("STREAMLIT_CLOUD") == "true"
 
 # -----------------------------------------------------------
-# 🎨 THEME HANDLER — LIGHT / DARK MODE
+# 🎨 THEME
 # -----------------------------------------------------------
 def apply_theme(mode):
     if mode == "Dark":
@@ -48,13 +53,17 @@ st.set_page_config(
 )
 
 # -----------------------------------------------------------
-# ⚙ SIDEBAR SETTINGS
+# ⚙ SIDEBAR
 # -----------------------------------------------------------
 with st.sidebar.expander("⚙ Settings", expanded=True):
     theme_choice = st.radio("Theme Mode:", ["Dark", "Light"], index=0)
     use_ai = st.checkbox("🤖 Use AI Analysis", value=False)
 
-    # ✅ AI ENVIRONMENT LINE (NEW)
+    project_name = st.text_input(
+        "📦 Project Name (Baseline Key)",
+        value="QAM_Lightning"
+    )
+
     if IS_CLOUD:
         st.caption("☁️ AI Engine: OpenAI (Cloud)")
     else:
@@ -63,13 +72,13 @@ with st.sidebar.expander("⚙ Settings", expanded=True):
 apply_theme(theme_choice)
 
 # -----------------------------------------------------------
-# 🏁 MAIN TITLE
+# 🏁 TITLE
 # -----------------------------------------------------------
 st.markdown("<h1 class='title-text'>🚀 Provar AI XML Analyzer</h1>", unsafe_allow_html=True)
 st.write("Upload one or more **JUnit XML Reports** below:")
 
 # -----------------------------------------------------------
-# 📄 MULTIPLE XML UPLOAD
+# 📄 UPLOAD
 # -----------------------------------------------------------
 uploaded_files = st.file_uploader(
     "📄 Upload XML Reports",
@@ -78,93 +87,136 @@ uploaded_files = st.file_uploader(
 )
 
 # -----------------------------------------------------------
-# 🧠 MAIN ANALYSIS LOGIC
+# 🔧 Helper
+# -----------------------------------------------------------
+def shorten_project_cache_path(full_path: str) -> str:
+    if not full_path:
+        return ""
+    marker = "Jenkins\\"
+    if marker in full_path:
+        return full_path.split(marker, 1)[1]
+    parts = full_path.replace("/", "\\").split("\\")
+    return "\\".join(parts[-2:])
+
+# -----------------------------------------------------------
+# 🧠 MAIN LOGIC
 # -----------------------------------------------------------
 if uploaded_files:
 
     st.success(f"{len(uploaded_files)} file(s) uploaded.")
 
     if st.button("🔍 Analyze XML Reports", use_container_width=True):
-        st.session_state.show_dashboard = False
 
+        st.session_state.show_dashboard = False
         all_failures = []
 
-        # STEP 1 — Extract failures
+        # -------------------------------
+        # Extract Failures
+        # -------------------------------
         for file in uploaded_files:
             st.info(f"Extracting failures from **{file.name}** ...")
-
             failures = extract_failed_tests(file)
 
             for f in failures:
                 all_failures.append({
                     "testcase": f["name"],
+                    "testcase_path": f["testcase_path"],
                     "error": f["error"],
                     "details": f["details"],
-                    "source": file.name
+                    "source": file.name,
+                    "webBrowserType": f["webBrowserType"],
+                    "projectCachePath": shorten_project_cache_path(
+                        f["projectCachePath"]
+                    )
                 })
 
-        total = len(all_failures)
-        st.write(f"### Found **{total} failed testcases** across {len(uploaded_files)} file(s).")
+        # -------------------------------
+        # BASELINE COMPARISON
+        # -------------------------------
+        new_failures, existing_failures = compare_with_baseline(
+            project_name,
+            all_failures
+        )
 
+        st.subheader("📊 Baseline Comparison")
+        st.success(f"🆕 New Failures: {len(new_failures)}")
+        st.info(f"♻️ Existing Failures: {len(existing_failures)}")
+
+        # -------------------------------
+        # AI Analysis (ONLY NEW FAILURES)
+        # -------------------------------
         progress = st.progress(0)
-        step = 100 / total if total > 0 else 1
+        step = 100 / len(new_failures) if new_failures else 100
 
         results = []
 
-        # STEP 2 — AI Analysis (Optional)
-        for i, failure in enumerate(all_failures):
-
+        for i, failure in enumerate(new_failures):
             progress.progress(int((i + 1) * step))
 
             if use_ai:
-                ai_summary = generate_ai_summary(
+                failure["analysis"] = generate_ai_summary(
                     testcase=failure["testcase"],
                     error_message=failure["error"],
                     details=failure["details"]
                 )
             else:
-                ai_summary = "⏭ AI Skipped (AI is turned OFF)"
+                failure["analysis"] = "⏭ AI Skipped (AI is turned OFF)"
 
-            failure["analysis"] = ai_summary
             results.append(failure)
-
             time.sleep(0.05)
 
         st.success("🎉 Analysis Completed!")
+
         df = pd.DataFrame(results)
 
-        # -----------------------------------------------------------
-        # 📌 Accordion UI
-        # -----------------------------------------------------------
-        st.subheader("📌 Failure Analysis")
+        # -------------------------------
+        # REPORT ENV
+        # -------------------------------
+        if not df.empty:
+            st.subheader("🧾 Report Environment")
+            st.markdown(f"""
+- **Browser:** `{df.loc[0, 'webBrowserType']}`
+- **Project Cache Path:** `{df.loc[0, 'projectCachePath']}`
+""")
 
-        for idx, row in df.iterrows():
+        # -------------------------------
+        # FAILURE VIEW
+        # -------------------------------
+        st.subheader("📌 New Failure Analysis")
+
+        for _, row in df.iterrows():
             with st.expander(f"🔹 {row['testcase']} — 📄 {row['source']}"):
+                st.markdown(f"**📁 Testcase Path:** `{row['testcase_path']}`")
                 st.markdown(f"**❗ Error:** {row['error']}")
                 st.markdown(f"**📄 Details:** {row['details']}")
                 st.markdown("### 🤖 AI Summary")
                 st.write(row["analysis"])
 
-        # -----------------------------------------------------------
-        # 📊 DASHBOARD
-        # -----------------------------------------------------------
+        # -------------------------------
+        # BASELINE SAVE
+        # -------------------------------
+        if st.button("⭐ Mark This Report as Baseline"):
+            save_baseline(project_name, all_failures)
+            st.success("Baseline saved successfully ✅")
+
+        # -------------------------------
+        # DASHBOARD
+        # -------------------------------
         if st.button("📊 Show Dashboard"):
             st.session_state.show_dashboard = True
 
         if st.session_state.show_dashboard:
-            render_dashboard(df)
+            render_dashboard(pd.DataFrame(all_failures))
 
-        # -----------------------------------------------------------
-        # ⬇ EXPORT TO EXCEL
-        # -----------------------------------------------------------
+        # -------------------------------
+        # EXPORT
+        # -------------------------------
         if st.button("⬇ Export to Excel (.xlsx)"):
-
-            excel_buffer = io.BytesIO()
-            df.to_excel(excel_buffer, index=False, sheet_name="AI_Analysis")
-
+            buffer = io.BytesIO()
+            df.to_excel(buffer, index=False, sheet_name="New_Failures")
             st.download_button(
                 label="📥 Download XLSX File",
-                data=excel_buffer.getvalue(),
-                file_name="Provar_AI_Analysis.xlsx",
+                data=buffer.getvalue(),
+                file_name="Provar_AI_New_Failures.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )

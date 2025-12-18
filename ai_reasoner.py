@@ -1,6 +1,5 @@
 import os
 import requests
-import openai
 
 # -------------------------------------------------------
 # ENV DETECTION
@@ -14,10 +13,12 @@ OLLAMA_URL = "http://localhost:11434/api/generate"
 OLLAMA_MODEL = "llama3"
 
 # -------------------------------------------------------
-# OPENAI CONFIG (Cloud)
+# CLOUD CONFIG (OpenAI)
 # -------------------------------------------------------
-OPENAI_MODEL = "gpt-4o-mini"   # fast + cheap
-openai.api_key = os.getenv("OPENAI_API_KEY")
+if IS_CLOUD:
+    import openai
+    openai.api_key = os.getenv("OPENAI_API_KEY")
+    OPENAI_MODEL = "gpt-4o-mini"
 
 
 def generate_ai_summary(testcase, error_message, details):
@@ -46,7 +47,6 @@ Suggested Fix:
                 timeout=30
             )
             return response.choices[0].message.content.strip()
-
         except Exception as e:
             return f"❌ Cloud AI Error: {str(e)}"
 
@@ -63,11 +63,9 @@ Suggested Fix:
             },
             timeout=120
         )
-
         return response.json().get("response", "").strip()
 
     except requests.exceptions.Timeout:
         return "❌ Ollama Timeout"
-
     except Exception as e:
         return f"❌ Ollama Error: {str(e)}"
