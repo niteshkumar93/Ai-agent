@@ -107,6 +107,22 @@ apply_theme(theme_choice)
 # -----------------------------------------------------------
 st.markdown("<h1 class='title-text'>🚀 Provar AI XML Analyzer</h1>", unsafe_allow_html=True)
 st.write("Upload one or more **JUnit XML Reports** below:")
+def detect_project_from_path(path: str):
+    if not path:
+        return None
+    for p in KNOWN_PROJECTS:
+        if f"\\{p}" in path or f"/{p}" in path:
+            return p
+    return None
+
+
+def shorten_project_cache_path(path: str) -> str:
+    if not path:
+        return ""
+    marker = "Jenkins\\"
+    if marker in path:
+        return path.split(marker, 1)[1]
+    return path.replace("/", "\\").split("\\")[-1]
 
 # -----------------------------------------------------------
 # 📄 UPLOAD
@@ -131,12 +147,40 @@ if uploaded_files:
 
     st.subheader("📦 Baseline Selection")
 
+   selected_project = None
+analysis_mode = "New analysis (ignore baseline)"
+baseline_exists = False
+
+if uploaded_files:
+    sample_failures = extract_failed_tests(uploaded_files[0])
+    detected_project = None
+
+    if sample_failures:
+        detected_project = detect_project_from_path(
+            sample_failures[0].get("projectCachePath", "")
+        )
+
+    st.subheader("📦 Baseline Selection")
+
     selected_project = st.selectbox(
         "Select baseline project",
         KNOWN_PROJECTS,
         index=KNOWN_PROJECTS.index(detected_project)
         if detected_project in KNOWN_PROJECTS else 0
     )
+
+    from baseline_manager import load_baseline
+    baseline_exists = bool(load_baseline(selected_project))
+
+    if baseline_exists:
+        st.success("✅ Baseline available for this project")
+        analysis_mode = st.radio(
+            "Choose analysis mode",
+            ["Compare with baseline", "New analysis (ignore baseline)"]
+        )
+    else:
+        st.warning("⚠️ Baseline not available for this project")
+        st.info("You can save this report as a new baseline after analysis")
 
     from baseline_manager import load_baseline
     baseline_exists = bool(load_baseline(selected_project))
@@ -198,16 +242,15 @@ if uploaded_files and st.button("🔍 Analyze XML Reports", use_container_width=
                 ),
             })
 
+    # ✅ SAFE BASELINE LOGIC
     if analysis_mode == "Compare with baseline":
-     new_failures, existing_failures = compare_with_baseline(
-        selected_project,
-        all_failures
-    )
-else:
-    new_failures = all_failures
-    existing_failures = []
-
-
+        new_failures, existing_failures = compare_with_baseline(
+            selected_project,
+            all_failures
+        )
+    else:
+        new_failures = all_failures
+        existing_failures = []
     st.subheader("📊 Baseline Comparison")
     st.success(f"🆕 New Failures: {len(new_failures)}")
     st.info(f"♻️ Existing Failures: {len(existing_failures)}")
