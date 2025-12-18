@@ -3,11 +3,17 @@ import pandas as pd
 import time
 import io
 import os
+def safe_extract_failures(uploaded_file):
+    try:
+        uploaded_file.seek(0)  # 🔑 reset pointer
+        return extract_failed_tests(uploaded_file)
+    except Exception:
+        return []
 
 from xml_extractor import extract_failed_tests
 from ai_reasoner import generate_ai_summary
 from dashboard import render_dashboard
-from baseline_manager import (
+from baseline_manager import(
     save_baseline,
     compare_with_baseline,
     get_baseline_history,
@@ -137,7 +143,8 @@ baseline_exists = False
 
 if uploaded_files:
     # Try auto-detect from first XML
-    sample_failures = extract_failed_tests(uploaded_files[0])
+    sample_failures = safe_extract_failures(uploaded_files[0])
+
     detected_project = None
 
     if sample_failures:
@@ -217,22 +224,23 @@ def shorten_project_cache_path(path: str) -> str:
 # -----------------------------------------------------------
 # 🧠 ANALYZE
 # -----------------------------------------------------------
+# -----------------------------------------------------------
+# 🧠 ANALYZE
+# -----------------------------------------------------------
 if uploaded_files and st.button("🔍 Analyze XML Reports", use_container_width=True):
+
+    st.session_state.df = None
     st.session_state.show_dashboard = False
-    st.session_state.rollback_done = False
     st.session_state.baseline_saved = False
 
     all_failures = []
 
     for file in uploaded_files:
-        failures = extract_failed_tests(file)
+        failures = safe_extract_failures(file)
         for f in failures:
             all_failures.append({
                 "testcase": f["name"],
-                "testcase_path": f.get(
-                    "testcase_path",
-                    f["name"].replace(".", "/")
-                ),
+                "testcase_path": f.get("testcase_path", f["name"].replace(".", "/")),
                 "error": f["error"],
                 "details": f["details"],
                 "source": file.name,
@@ -241,6 +249,35 @@ if uploaded_files and st.button("🔍 Analyze XML Reports", use_container_width=
                     f.get("projectCachePath", "")
                 ),
             })
+
+    # ---- Decide comparison mode
+    if analysis_mode == "Compare with baseline" and baseline_exists:
+        new_failures, existing_failures = compare_with_baseline(
+            selected_project,
+            all_failures
+        )
+    else:
+        new_failures = all_failures
+        existing_failures = []
+
+    st.subheader("📊 Baseline Comparison")
+    st.success(f"🆕 New Failures: {len(new_failures)}")
+    st.info(f"♻️ Existing Failures: {len(existing_failures)}")
+
+    results = []
+    progress = st.progress(0)
+
+    for i, f in enumerate(new_failures):
+        progress.progress(int((i + 1) / max(len(new_failures), 1) * 100))
+        f["analysis"] = (
+            generate_ai_summary(f["testcase"], f["error"], f["details"])
+            if use_ai else "⏭ AI Skipped"
+        )
+        results.append(f)
+        time.sleep(0.03)
+
+    st.session_state.df = pd.DataFrame(results)
+    st.success("🎉 Analysis Completed!")
 
     # ✅ SAFE BASELINE LOGIC
     if analysis_mode == "Compare with baseline":
@@ -347,12 +384,13 @@ if st.session_state.df is not None and not st.session_state.df.empty:
     # ⬇ EXPORT
     # -------------------------------------------------------
     buffer = io.BytesIO()
-    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-     df.to_excel(writer, index=False)
+with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+    df.to_excel(writer, index=False)
 
-    st.download_button(
-        "⬇ Download Excel",
-        buffer.getvalue(),
-        "Provar_AI_Analysis.xlsx",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
+st.download_button(
+    "⬇ Download Excel",
+    buffer.getvalue(),
+    "Provar_AI_Analysis.xlsx",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+)
+
