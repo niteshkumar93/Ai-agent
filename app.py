@@ -7,20 +7,21 @@ import os
 from xml_extractor import extract_failed_tests
 from ai_reasoner import generate_ai_summary
 from dashboard import render_dashboard
-from baseline_manager import save_baseline, compare_with_baseline
+from baseline_manager import (
+    save_baseline,
+    compare_with_baseline,
+    get_baseline_history
+)
 
 # -----------------------------------------------------------
 # 🟦 SESSION STATE (TOP LEVEL – NEVER INDENT)
 # -----------------------------------------------------------
 if "df" not in st.session_state:
     st.session_state.df = None
-
 if "show_dashboard" not in st.session_state:
     st.session_state.show_dashboard = False
-
 if "show_export" not in st.session_state:
     st.session_state.show_export = False
-
 if "baseline_saved" not in st.session_state:
     st.session_state.baseline_saved = False
 
@@ -34,25 +35,19 @@ IS_CLOUD = os.getenv("STREAMLIT_CLOUD") == "true"
 # -----------------------------------------------------------
 def apply_theme(mode):
     if mode == "Dark":
-        st.markdown(
-            """
+        st.markdown("""
             <style>
                 body { background-color: #0e0e0e; }
                 .title-text { color: #ffffff !important; }
             </style>
-            """,
-            unsafe_allow_html=True,
-        )
+        """, unsafe_allow_html=True)
     else:
-        st.markdown(
-            """
+        st.markdown("""
             <style>
                 body { background-color: #ffffff; }
                 .title-text { color: #111111 !important; }
             </style>
-            """,
-            unsafe_allow_html=True,
-        )
+        """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------
 # 🌐 PAGE CONFIG
@@ -84,10 +79,7 @@ apply_theme(theme_choice)
 # -----------------------------------------------------------
 # 🏁 TITLE
 # -----------------------------------------------------------
-st.markdown(
-    "<h1 class='title-text'>🚀 Provar AI XML Analyzer</h1>",
-    unsafe_allow_html=True,
-)
+st.markdown("<h1 class='title-text'>🚀 Provar AI XML Analyzer</h1>", unsafe_allow_html=True)
 st.write("Upload one or more **JUnit XML Reports** below:")
 
 # -----------------------------------------------------------
@@ -124,37 +116,32 @@ if uploaded_files:
 
         all_failures = []
 
-        # -------------------------------
-        # Extract failures
-        # -------------------------------
         for file in uploaded_files:
             st.info(f"Extracting failures from **{file.name}** ...")
             failures = extract_failed_tests(file)
 
             for f in failures:
-                all_failures.append(
-                    {
-                        "testcase": f["name"],
-                        "testcase_path": f.get(
-                            "testcase_path",
-                            f["name"].replace(".", "/"),
-                        ),
-                        "error": f["error"],
-                        "details": f["details"],
-                        "source": file.name,
-                        "webBrowserType": f.get("webBrowserType", "Unknown"),
-                        "projectCachePath": shorten_project_cache_path(
-                            f.get("projectCachePath", "")
-                        ),
-                    }
-                )
+                all_failures.append({
+                    "testcase": f["name"],
+                    "testcase_path": f.get(
+                        "testcase_path",
+                        f["name"].replace(".", "/")
+                    ),
+                    "error": f["error"],
+                    "details": f["details"],
+                    "source": file.name,
+                    "webBrowserType": f.get("webBrowserType", "Unknown"),
+                    "projectCachePath": shorten_project_cache_path(
+                        f.get("projectCachePath", "")
+                    )
+                })
 
         # -------------------------------
         # BASELINE COMPARISON
         # -------------------------------
         new_failures, existing_failures = compare_with_baseline(
             project_name,
-            all_failures,
+            all_failures
         )
 
         st.subheader("📊 Baseline Comparison")
@@ -166,7 +153,6 @@ if uploaded_files:
         # -------------------------------
         progress = st.progress(0)
         step = 100 / len(new_failures) if new_failures else 100
-
         results = []
 
         for i, failure in enumerate(new_failures):
@@ -176,7 +162,7 @@ if uploaded_files:
                 failure["analysis"] = generate_ai_summary(
                     testcase=failure["testcase"],
                     error_message=failure["error"],
-                    details=failure["details"],
+                    details=failure["details"]
                 )
             else:
                 failure["analysis"] = "⏭ AI Skipped (AI is turned OFF)"
@@ -185,29 +171,21 @@ if uploaded_files:
             time.sleep(0.05)
 
         st.session_state.df = pd.DataFrame(results)
-        df = st.session_state.df
-
         st.success("🎉 Analysis Completed!")
 
 # -----------------------------------------------------------
-# 🧾 REPORT ENV (SHOW ONCE)
+# 🧾 REPORT + ACTIONS
 # -----------------------------------------------------------
 if st.session_state.df is not None and not st.session_state.df.empty:
     df = st.session_state.df
 
     st.subheader("🧾 Report Environment")
-    st.markdown(
-        f"""
+    st.markdown(f"""
 - **Browser:** `{df.loc[0, 'webBrowserType']}`
 - **Project Cache Path:** `{df.loc[0, 'projectCachePath']}`
-"""
-    )
+""")
 
-    # -----------------------------------------------------------
-    # 📌 FAILURE VIEW
-    # -----------------------------------------------------------
     st.subheader("📌 New Failure Analysis")
-
     for _, row in df.iterrows():
         with st.expander(f"🔹 {row['testcase']} — 📄 {row['source']}"):
             st.markdown(f"**📁 Testcase Path:** `{row['testcase_path']}`")
@@ -216,37 +194,42 @@ if st.session_state.df is not None and not st.session_state.df.empty:
             st.markdown("### 🤖 AI Summary")
             st.write(row["analysis"])
 
-    st.info("💡 Tip: Use buttons below to view dashboard, export report, or save baseline.")
-
-    # -----------------------------------------------------------
-    # 🧱 SAVE BASELINE
-    # -----------------------------------------------------------
+    # -------------------------------
+    # SAVE BASELINE (AUTO‑COMMIT)
+    # -------------------------------
     if st.button("🧱 Mark this report as Baseline"):
-        save_baseline(
-            project_name,
-            df.to_dict(orient="records"),
-        )
+        save_baseline(project_name, df.to_dict(orient="records"))
         st.session_state.baseline_saved = True
 
     if st.session_state.baseline_saved:
-        st.success("✅ Baseline saved successfully")
+        st.success("✅ Baseline saved & committed to GitHub")
 
-    # -----------------------------------------------------------
-    # 📊 DASHBOARD
-    # -----------------------------------------------------------
+    # -------------------------------
+    # BASELINE HISTORY UI
+    # -------------------------------
+    st.subheader("🕒 Baseline History")
+    history = get_baseline_history(project_name)
+
+    if not history:
+        st.info("No baseline history found")
+    else:
+        for h in history[:5]:
+            with st.expander(h["commit"]["message"]):
+                st.write("Author:", h["commit"]["author"]["name"])
+                st.write("Date:", h["commit"]["author"]["date"])
+
+    # -------------------------------
+    # DASHBOARD
+    # -------------------------------
     if st.button("📊 Show Dashboard"):
         st.session_state.show_dashboard = True
-
     if st.session_state.show_dashboard:
         render_dashboard(df)
 
-    # -----------------------------------------------------------
-    # ⬇ EXPORT
-    # -----------------------------------------------------------
+    # -------------------------------
+    # EXPORT
+    # -------------------------------
     if st.button("⬇ Export to Excel (.xlsx)"):
-        st.session_state.show_export = True
-
-    if st.session_state.show_export:
         buffer = io.BytesIO()
         df.to_excel(buffer, index=False)
         st.download_button(
