@@ -1,0 +1,102 @@
+[
+  {
+    "testcase": "AccountInsideVF.testcase",
+    "testcase_path": "tests/Regression\\06 - VisualForce\\AccountInsideVF\\AccountInsideVF.testcase",
+    "error": "Execution failed",
+    "details": "Assertion Failed. EqualTo 15",
+    "source": "JUnit (25).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\VF_Lightning_Windows\\..\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "AccountInsideVF_ClassicConsole_PRO-21490.testcase",
+    "testcase_path": "tests/Regression\\06 - VisualForce\\AccountInsideVF\\AccountInsideVF_ClassicConsole_PRO-21490.testcase",
+    "error": "Execution failed",
+    "details": "The control was not found.  Locator: By.xpath: //div[contains(@class,'bRelatedList') and contains(@id, '_RelatedFileList')]//input[(@type='button' or @type='submit') and (  @name='NewFile' or @name='newFile' or @name='newfile')]",
+    "source": "JUnit (25).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\VF_Lightning_Windows\\..\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "Contact_Inside_VF_01_Assertions_And_Actions.testcase",
+    "testcase_path": "tests/Regression\\06 - VisualForce\\ContactInsideVF\\Contact_Inside_VF_01_Assertions_And_Actions.testcase",
+    "error": "Execution failed",
+    "details": "Assertion Failed.CreatedForTest EqualTo [View Org Chart]",
+    "source": "JUnit (25).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\VF_Lightning_Windows\\..\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "IframeInsideIframe_04_NestedTable.testcase",
+    "testcase_path": "tests/Regression\\06 - VisualForce\\IframeInsideIframe\\IframeInsideIframe_04_NestedTable.testcase",
+    "error": "Execution failed",
+    "details": "Field not found on Page Object.  Parent class: pageobjects.UAT_IFRAME_VF$Table1$ByteBuddy$jClpdla2, field: table1",
+    "source": "JUnit (25).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\VF_Lightning_Windows\\..\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "IframeInsideVF_04_NestedTable.testcase",
+    "testcase_path": "tests/Regression\\06 - VisualForce\\IframeInsideVF\\IframeInsideVF_04_NestedTable.testcase",
+    "error": "Execution failed",
+    "details": "Field not found on Page Object.  Parent class: pageobjects.UAT_IFRAME_VF$Con1$ByteBuddy$SHZ4pXW9, field: Con1",
+    "source": "JUnit (25).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\VF_Lightning_Windows\\..\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "TestProvar.testcase",
+    "testcase_path": "tests/Regression\\06 - VisualForce\\TestProvar\\TestProvar.testcase",
+    "error": "Execution failed",
+    "details": "The control was not found.  Locator: By.xpath: //div[contains(@class,'pbHeader')][1]//input[@type='button' and (@name='testProvar' or @name='testprovar')]",
+    "source": "JUnit (25).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\VF_Lightning_Windows\\..\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "VFInsideVF_01_Create_Case.testcase",
+    "testcase_path": "tests/Regression\\06 - VisualForce\\VFInsideVF\\VFInsideVF_01_Create_Case.testcase",
+    "error": "Execution failed",
+    "details": "Assertion Failed.Test Reg Ouath EqualTo Admin1 Provar",
+    "source": "JUnit (25).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\VF_Lightning_Windows\\..\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "VFInsideVF_02_UI_Assertions-10817.testcase",
+    "testcase_path": "tests/Regression\\06 - VisualForce\\VFInsideVF\\VFInsideVF_02_UI_Assertions-10817.testcase",
+    "error": "Execution failed",
+    "details": "Assertion Failed.null EqualTo Yahoo Maps",
+    "source": "JUnit (25).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\VF_Lightning_Windows\\..\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "01_Create Case.testcase",
+    "testcase_path": "tests/Regression\\06 - VisualForce\\VFOnly\\01_Create Case.testcase",
+    "error": "Execution failed",
+    "details": "Assertion Failed.Error:\nYou must enter a value EqualTo Error: You must enter a value",
+    "source": "JUnit (25).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\VF_Lightning_Windows\\..\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "VF_LightningHTML.testcase",
+    "testcase_path": "tests/Regression\\06 - VisualForce\\VF_LightningHTML\\VF_LightningHTML.testcase",
+    "error": "Execution failed",
+    "details": "Object delete failed. Id: 02iKA000000p2OCYAY, Message: Your attempt to delete Asset-D12H could not be completed because it is associated with the following cases.: 00391096",
+    "source": "JUnit (25).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\VF_Lightning_Windows\\..\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  }
+]

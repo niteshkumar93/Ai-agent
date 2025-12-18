@@ -1,0 +1,552 @@
+[
+  {
+    "testcase": "00_TestRunErrors.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\01- UI Test Cases\\00-Tool Test Functions\\00_TestRunErrors.testcase",
+    "error": "Execution failed",
+    "details": "Provar_Test_Error_Function",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "10- Contact_RelatedList_Opportunity.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\01- UI Test Cases\\01 Sales\\Contact\\10- Contact_RelatedList_Opportunity.testcase",
+    "error": "Execution failed",
+    "details": "The control was not found.  Locator: By.xpath: //td[@id = 'topButtonRow' or @id = 'bottomButtonRow'][1]//input[(@type='button' or @type='submit') and (@name='cancel')]",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "05- Opportunity Related List_Contact Roles.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\01- UI Test Cases\\01 Sales\\Opportunity\\05- Opportunity Related List_Contact Roles.testcase",
+    "error": "Execution failed",
+    "details": "No rows found in table",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "Console_ColumnAssertion_Lookup.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\01- UI Test Cases\\02 Console\\Account\\Console_ColumnAssertion_Lookup.testcase",
+    "error": "Execution failed",
+    "details": "[NullPointerException: Cannot invoke \"java.util.List.iterator()\" because the return value of \"com.provar.core.model.ui.api.IUiScreenMapping.getChildComponentMappings()\" is null\nStack Trace:\njava.lang.NullPointerException: Cannot invoke \"java.util.List.iterator()\" because the return value of \"com.provar.core.model.ui.api.IUiScreenMapping.getChildComponentMappings()\" is null\n\tat com.provar.plugins.forcedotcom.core.ui.SfRowLocatorSupport.resolveUiScreenMappingToXpath(SfRowLocatorSupport.java:522)\n\tat com.provar.plugins.forcedotcom.core.ui.SfRowLocatorSupport.resolveToXpath(SfRowLocatorSupport.java:237)\n\tat com.provar.plugins.forcedotcom.core.ui.SfUiHandler.resolveToXPath(SfUiHandler.java:6278)\n\tat com.provar.plugins.forcedotcom.core.ui.SeleniumUiHandler.resolveLocator(SeleniumUiHandler.java:5491)\n\tat com.provar.plugins.forcedotcom.core.ui.SfUiHandler.performRowOpenLayout(SfUiHandler.java:4830)\n\tat com.provar.plugins.forcedotcom.core.ui.SfUiHandler.performRowOpen(SfUiHandler.java:4666)\n\tat com.provar.plugins.forcedotcom.core.ui.SeleniumUiHandler.perform(SeleniumUiHandler.java:420)\n\tat com.provar.plugins.forcedotcom.core.connection.SfConnectionHandler.delegateToUiHandler(SfConnectionHandler.java:339)\n\tat com.provar.plugins.forcedotcom.core.connection.SfConnectionHandler.perform(SfConnectionHandler.java:330)\n\tat com.provar.core.testexecution.common.java.TestExecutionContextImpl.doConnectionOperation(TestExecutionContextImpl.java:866)\n\tat com.provar.plugins.forcedotcom.core.ui.UiWithRow.execute(UiWithRow.java:121)\n\tat java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)\n\tat java.base/java.lang.reflect.Method.invoke(Method.java:580)\n\tat com.provar.core.testexecution.container.java.TestExecutionContainerImpl.invokeTestApi(TestExecutionContainerImpl.java:806)\n\tat com.provar.core.testexecution.container.java.LocalTestExecutionContainerRunner.doInvokeTestApi(LocalTestExecutionContainerRunner.java:777)\n\tat com.provar.core.testexecution.container.java.LocalTestExecutionContainerRunner$MessageProcessor.run(LocalTestExecutionContainerRunner.java:1451)\n]",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "03- Leads RelatedList_OpenActivities.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\01- UI Test Cases\\02 Console\\Lead\\03- Leads RelatedList_OpenActivities.testcase",
+    "error": "Execution failed",
+    "details": "The control was not found.  Locator: By.xpath: ( //div[@id='InlineEditDialogContent']//div[contains(@class, 'inlineEditDiv') or contains(@class, 'inlineEditCompoundDiv')]/table//tr/td[contains(@class,'labelCol') and  ( .//text() = 'Name' or normalize-space(.//text()) = 'Name' )]/following-sibling::td[1] | //div[contains(@class,'pbBody') and not(//div[@id='InlineEditDialog' and contains(@style, 'visible')])]//div[contains(@class,'pbSubheader') and (h3/text()[not(parent::span)] = 'Task Information' or translate(normalize-space(h3/text()[not(parent::span)]), ' ', '') = translate(normalize-space('Task Information'), ' ', ''))]/following-sibling::div[contains(@class,'pbSubsection')][1]/table//tr/td[contains(@class,'labelCol') and  ( .//text() = 'Name' or normalize-space(.//text()) = 'Name' )]/following-sibling::td[1] )",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "04- Leads Related List_ActivityHistory.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\01- UI Test Cases\\02 Console\\Lead\\04- Leads Related List_ActivityHistory.testcase",
+    "error": "Execution failed",
+    "details": "The control was not found.  Locator: By.xpath: ( //div[@id='InlineEditDialogContent']//div[contains(@class, 'inlineEditDiv') or contains(@class, 'inlineEditCompoundDiv')]/table//tr/td[contains(@class,'labelCol') and  ( .//text() = 'Name' or normalize-space(.//text()) = 'Name' )]/following-sibling::td[1] | //div[contains(@class,'pbBody') and not(//div[@id='InlineEditDialog' and contains(@style, 'visible')])]//div[contains(@class,'pbSubheader') and (h3/text()[not(parent::span)] = 'Task Information' or translate(normalize-space(h3/text()[not(parent::span)]), ' ', '') = translate(normalize-space('Task Information'), ' ', ''))]/following-sibling::div[contains(@class,'pbSubsection')][1]/table//tr/td[contains(@class,'labelCol') and  ( .//text() = 'Name' or normalize-space(.//text()) = 'Name' )]/following-sibling::td[1] )",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "05- Leads RelatedList_Campaign.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\01- UI Test Cases\\02 Console\\Lead\\05- Leads RelatedList_Campaign.testcase",
+    "error": "Execution failed",
+    "details": "The row locator did not match any rows.",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "11- Console Opportunity RelatedList_OpenActivities.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\01- UI Test Cases\\02 Console\\Opportunity\\11- Console Opportunity RelatedList_OpenActivities.testcase",
+    "error": "Execution failed",
+    "details": "No rows found in table",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "DB2 database tests.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\02- API_TestCases\\04- Connections\\Database\\DB2 database tests.testcase",
+    "error": "Execution failed",
+    "details": "Error opening DB Connection.  Connection Name: DB2, cause: [DisconnectNonTransientConnectionException: [jcc][t4][2043][11550][4.25.13] Exception java.net.ConnectException: Error opening socket to server /3.219.150.117 on port 50,000 with message: Connection timed out: connect. ERRORCODE=-4499, SQLSTATE=08001, ConnectException: Connection timed out: connect]",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "MSSQLServer.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\02- API_TestCases\\04- Connections\\Database\\MSSQLServer.testcase",
+    "error": "Execution failed",
+    "details": "Error opening DB Connection.  Connection Name: SQLSERVER, cause: [SQLServerException: The TCP/IP connection to the host 3.219.150.117, port 1433 has failed. Error: \"Connect timed out. Verify the connection properties. Make sure that an instance of SQL Server is running on the host and accepting TCP/IP connections at the port. Make sure that TCP connections to the port are not blocked by a firewall.\".]",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "MySQL5 DB Tests.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\02- API_TestCases\\04- Connections\\Database\\MySQL5 DB Tests.testcase",
+    "error": "Execution failed",
+    "details": "Error opening DB Connection.  Connection Name: MySql5, cause: [SQLNonTransientConnectionException: Could not connect to address=(host=23.20.174.149)(port=3306)(type=master) : Connection timed out: getsockopt, ConnectException: Connection timed out: getsockopt]",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "MySQL8 DB Tests.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\02- API_TestCases\\04- Connections\\Database\\MySQL8 DB Tests.testcase",
+    "error": "Execution failed",
+    "details": "Error opening DB Connection.  Connection Name: MySql8, cause: [SQLNonTransientConnectionException: Could not connect to address=(host=23.20.174.149)(port=3306)(type=master) : Connection timed out: getsockopt, ConnectException: Connection timed out: getsockopt]",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "Oracle DB tests.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\02- API_TestCases\\04- Connections\\Database\\Oracle DB tests.testcase",
+    "error": "Execution failed",
+    "details": "Error opening DB Connection.  Connection Name: Oracle, cause: [SQLRecoverableException: IO Error: The Network Adapter could not establish the connection, NetException: The Network Adapter could not establish the connection, IOException: Connection timed out: connect, socket connect lapse 21002 ms. oracledb.qa.provar.in/172.31.29.31 1521 0 1 true, ConnectException: Connection timed out: connect]",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "Postgres DB Tests.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\02- API_TestCases\\04- Connections\\Database\\Postgres DB Tests.testcase",
+    "error": "Execution failed",
+    "details": "Error opening DB Connection.  Connection Name: Postgres, cause: [PSQLException: The connection attempt failed., SocketTimeoutException: Connect timed out]",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "Oauth2_MSExchangeSendEmail.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\02- API_TestCases\\04- Connections\\Messaging\\Oauth2_MSExchangeSendEmail.testcase",
+    "error": "Execution failed",
+    "details": "Error getting request folder.  Folder: INBOX",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "Connections in group steps.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\02- API_TestCases\\04- Connections\\Multisession\\Connections in group steps.testcase",
+    "error": "Execution failed",
+    "details": "[TimeoutException: Expected condition failed: waiting for com.provar.plugins.forcedotcom.core.ui.SeleniumUiHandler$1@41f2e4bb (tried for 60 second(s) with 500 milliseconds interval)\nBuild info: version: '4.16.1', revision: '9b4c83354e'\nSystem info: os.name: 'Windows Server 2022', os.arch: 'amd64', os.version: '10.0', java.version: '21.0.5'\nDriver info: org.openqa.selenium.chrome.ChromeDriver$ByteBuddy$hdZRhJDE\nCapabilities {acceptInsecureCerts: false, browserName: chrome, browserVersion: 143.0.7499.147, chrome: {chromedriverVersion: 143.0.7499.42 (24bdc8c48a0c..., userDataDir: C:\\Users\\Administrator\\Docu...}, fedcm:accounts: true, goog:processID: 1432, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(direct), setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: dismiss and notify, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}\nSession ID: b6c9a08651c59dd565eaf5cd196281a2]",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "Parlell connection in single test case of diff org.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\02- API_TestCases\\04- Connections\\Multisession\\Parlell connection in single test case of diff org.testcase",
+    "error": "Execution failed",
+    "details": "The control was not found.  Locator: By.xpath: //div[contains(@class,'listButtons') or contains(@class,'listHeader')]//input[@name='new' or (contains(@name,'__new') and not(substring-after(@name,'__new')))]",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "Subsession of diff org connection.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\02- API_TestCases\\04- Connections\\Multisession\\Subsession of diff org connection.testcase",
+    "error": "Execution failed",
+    "details": "[TimeoutException: Expected condition failed: waiting for com.provar.plugins.forcedotcom.core.ui.SeleniumUiHandler$1@61152e58 (tried for 60 second(s) with 500 milliseconds interval)\nBuild info: version: '4.16.1', revision: '9b4c83354e'\nSystem info: os.name: 'Windows Server 2022', os.arch: 'amd64', os.version: '10.0', java.version: '21.0.5'\nDriver info: org.openqa.selenium.chrome.ChromeDriver$ByteBuddy$p47lWWAL\nCapabilities {acceptInsecureCerts: false, browserName: chrome, browserVersion: 143.0.7499.147, chrome: {chromedriverVersion: 143.0.7499.42 (24bdc8c48a0c..., userDataDir: C:\\Users\\Administrator\\Docu...}, fedcm:accounts: true, goog:processID: 4460, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(direct), setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: dismiss and notify, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}\nSession ID: 68e87f0362805b132718fe29913b624f]",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "SSO_SF_Lightning_OpportunityCreate.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\02- API_TestCases\\04- Connections\\SSO\\SSO_SF\\SSO_SF_Lightning_OpportunityCreate.testcase",
+    "error": "Execution failed",
+    "details": "SSO Login failed. Connection name: SF_SSO, SSO Connection name: {1}, messages:",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "SSO_SF_OpportunityCreate.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\02- API_TestCases\\04- Connections\\SSO\\SSO_SF\\SSO_SF_OpportunityCreate.testcase",
+    "error": "Execution failed",
+    "details": "SSO Login failed. Connection name: SF_SSO, SSO Connection name: {1}, messages:",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "Rest-Api Key Authentication.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\02- API_TestCases\\04- Connections\\Web Services\\Rest-Api Key Authentication.testcase",
+    "error": "Execution failed",
+    "details": "Assertion failed.  (result) 403 = 200 (target)",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "Salesforce Rest.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\02- API_TestCases\\04- Connections\\Web Services\\Salesforce Rest.testcase",
+    "error": "Execution failed",
+    "details": "Assertion failed.  (result) 200 = 401 (target)",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "AWS_Bucket_Operations_PRO-35404.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\02- API_TestCases\\04- Connections\\Web Services\\AWS\\AWS_Bucket_Operations_PRO-35404.testcase",
+    "error": "Execution failed",
+    "details": "[RuntimeException: Unable to compute hash while signing request: Cannot invoke \"String.getBytes(String)\" because \"text\" is null, NullPointerException: Cannot invoke \"String.getBytes(String)\" because \"text\" is null\nStack Trace:\njava.lang.NullPointerException: Cannot invoke \"String.getBytes(String)\" because \"text\" is null\n\tat com.provar.core.connection.rest.AWS4SignerBase.hash(AWS4SignerBase.java:114)\n\tat com.provar.core.connection.rest.AWSAuthenticationHandler.perform(AWSAuthenticationHandler.java:73)\n\tat com.provar.core.testexecution.common.java.TestExecutionContextImpl.doConnectionOperation(TestExecutionContextImpl.java:866)\n\tat com.provar.plugins.bundled.apis.restservice.RestRequest.execute(RestRequest.java:107)\n\tat java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)\n\tat java.base/java.lang.reflect.Method.invoke(Method.java:580)\n\tat com.provar.core.testexecution.container.java.TestExecutionContainerImpl.invokeTestApi(TestExecutionContainerImpl.java:806)\n\tat com.provar.core.testexecution.container.java.LocalTestExecutionContainerRunner.doInvokeTestApi(LocalTestExecutionContainerRunner.java:777)\n\tat com.provar.core.testexecution.container.java.LocalTestExecutionContainerRunner$MessageProcessor.run(LocalTestExecutionContainerRunner.java:1451)\n]",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "AccountRenamedExtract.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\02- API_TestCases\\05- Force.com\\AccountRenamedExtract.testcase",
+    "error": "Execution failed",
+    "details": "Select the Lightning Application to extract Dynamic Form Layout.",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "Account_DF13.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\02- API_TestCases\\05- Force.com\\Account_DF13.testcase",
+    "error": "Execution failed",
+    "details": "Select the Lightning Application to extract Dynamic Form Layout.",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "DateFormat_In_Excel.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\02- API_TestCases\\08- Read & Write\\DateFormat_In_Excel.testcase",
+    "error": "Execution failed",
+    "details": "Invalid date string format: d-MMM-yyyy HH:mm:ss for date 10-Jul-2020 8:00:00",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "Contact_Inside_VF_Assertions_And_Actions_PRO-19127.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\01- UI Test Cases\\03 VF\\VFConsole\\Contact_Inside_VF_Assertions_And_Actions_PRO-19127.testcase",
+    "error": "Execution failed",
+    "details": "Assertion Failed.CreatedForTest EqualTo [View Org Chart]",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "RenamingObjects.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\01- UI Test Cases\\04 RenamingObject\\RenamingObjects.testcase",
+    "error": "Execution failed",
+    "details": "The control was not found.  Locator: By.xpath: ( //div[@id='InlineEditDialogContent']//div[contains(@class, 'inlineEditDiv') or contains(@class, 'inlineEditCompoundDiv')]/table//tr/td[contains(@class,'labelCol') and  ( .//text() = 'Rating' or normalize-space(.//text()) = 'Rating' )]/following-sibling::td[1] | //div[contains(@class,'pbBody') and not(//div[@id='InlineEditDialog' and contains(@style, 'visible')])]//div[contains(@class,'pbSubheader') and (h3/text()[not(parent::span)] = 'Account Information' or translate(normalize-space(h3/text()[not(parent::span)]), ' ', '') = translate(normalize-space('Account Information'), ' ', ''))]/following-sibling::div[contains(@class,'pbSubsection')][1]/table//tr/td[contains(@class,'labelCol') and  ( .//text() = 'Rating' or normalize-space(.//text()) = 'Rating' )]/following-sibling::td[1] )",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "DynamicObject__.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\01- UI Test Cases\\05 Custom Object\\DynamicObject__.testcase",
+    "error": "Execution failed",
+    "details": "[NullPointerException: Cannot invoke \"java.util.List.iterator()\" because the return value of \"com.provar.core.model.ui.api.IUiScreenMapping.getChildComponentMappings()\" is null\nStack Trace:\njava.lang.NullPointerException: Cannot invoke \"java.util.List.iterator()\" because the return value of \"com.provar.core.model.ui.api.IUiScreenMapping.getChildComponentMappings()\" is null\n\tat com.provar.plugins.forcedotcom.core.ui.SfRowLocatorSupport.resolveUiScreenMappingToXpath(SfRowLocatorSupport.java:522)\n\tat com.provar.plugins.forcedotcom.core.ui.SfRowLocatorSupport.resolveToXpath(SfRowLocatorSupport.java:237)\n\tat com.provar.plugins.forcedotcom.core.ui.SfUiHandler.resolveToXPath(SfUiHandler.java:6278)\n\tat com.provar.plugins.forcedotcom.core.ui.SeleniumUiHandler.resolveLocator(SeleniumUiHandler.java:5491)\n\tat com.provar.plugins.forcedotcom.core.ui.SfUiHandler.performRowOpenLayout(SfUiHandler.java:4830)\n\tat com.provar.plugins.forcedotcom.core.ui.SfUiHandler.performRowOpen(SfUiHandler.java:4666)\n\tat com.provar.plugins.forcedotcom.core.ui.SeleniumUiHandler.perform(SeleniumUiHandler.java:420)\n\tat com.provar.plugins.forcedotcom.core.connection.SfConnectionHandler.delegateToUiHandler(SfConnectionHandler.java:339)\n\tat com.provar.plugins.forcedotcom.core.connection.SfConnectionHandler.perform(SfConnectionHandler.java:330)\n\tat com.provar.core.testexecution.common.java.TestExecutionContextImpl.doConnectionOperation(TestExecutionContextImpl.java:866)\n\tat com.provar.plugins.forcedotcom.core.ui.UiWithRow.execute(UiWithRow.java:121)\n\tat java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)\n\tat java.base/java.lang.reflect.Method.invoke(Method.java:580)\n\tat com.provar.core.testexecution.container.java.TestExecutionContainerImpl.invokeTestApi(TestExecutionContainerImpl.java:806)\n\tat com.provar.core.testexecution.container.java.LocalTestExecutionContainerRunner.doInvokeTestApi(LocalTestExecutionContainerRunner.java:777)\n\tat com.provar.core.testexecution.container.java.LocalTestExecutionContainerRunner$MessageProcessor.run(LocalTestExecutionContainerRunner.java:1451)\n]",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "Dynamic_Creation_Assertion_Edit.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\01- UI Test Cases\\05 Custom Object\\Dynamic_Creation_Assertion_Edit.testcase",
+    "error": "Execution failed",
+    "details": "Assertion Failed.Regression Oauth EqualTo Admin1 Provar",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "NamespaceCreate.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\01- UI Test Cases\\07 Namespace Prefix\\NamespaceCreate.testcase",
+    "error": "Execution failed",
+    "details": "The control was not found.  Locator: By.xpath: //div[contains(@class,'bRelatedList')][1]//input[@name = 'new']",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "NamespaceWithRecordType.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\01- UI Test Cases\\07 Namespace Prefix\\NamespaceWithRecordType.testcase",
+    "error": "Execution failed",
+    "details": "The control was not found.  Locator: By.xpath: //div[contains(@class,'bRelatedList')][1]//input[@name = 'new']",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "NamespaceWithRecordTypeList.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\01- UI Test Cases\\07 Namespace Prefix\\NamespaceWithRecordTypeList.testcase",
+    "error": "Execution failed",
+    "details": "[TimeoutException: Expected condition failed: waiting for com.provar.plugins.forcedotcom.core.ui.SeleniumUiHandler$1@34c55342 (tried for 60 second(s) with 500 milliseconds interval)\nBuild info: version: '4.16.1', revision: '9b4c83354e'\nSystem info: os.name: 'Windows Server 2022', os.arch: 'amd64', os.version: '10.0', java.version: '21.0.5'\nDriver info: org.openqa.selenium.chrome.ChromeDriver$ByteBuddy$YnmYchDz\nCapabilities {acceptInsecureCerts: false, browserName: chrome, browserVersion: 143.0.7499.147, chrome: {chromedriverVersion: 143.0.7499.42 (24bdc8c48a0c..., userDataDir: C:\\Users\\Administrator\\Docu...}, fedcm:accounts: true, goog:processID: 5372, networkConnectionEnabled: false, pageLoadStrategy: normal, platformName: windows, proxy: Proxy(direct), setWindowRect: true, strictFileInteractability: false, timeouts: {implicit: 0, pageLoad: 300000, script: 30000}, unhandledPromptBehavior: dismiss and notify, webauthn:extension:credBlob: true, webauthn:extension:largeBlob: true, webauthn:extension:minPinLength: true, webauthn:extension:prf: true, webauthn:virtualAuthenticators: true}\nSession ID: 49e7bcc7a8c12aec76480ffc22f36d20]",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "ThreePanelLayout_VF_InteractionLog.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\01- UI Test Cases\\09 ThreePanelLayout\\ThreePanelLayout_VF_InteractionLog.testcase",
+    "error": "Execution failed",
+    "details": "Failed to resolve control locator. Locator: ui:locator?name=CaseNumber&binding=sf%3Aui%3Abinding%3Aobject%3Fobject%3DCase%26field%3DCaseNumber",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "ThreePanellayout_Standard.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\01- UI Test Cases\\09 ThreePanelLayout\\ThreePanellayout_Standard.testcase",
+    "error": "Execution failed",
+    "details": "Failed to resolve control locator. Locator: ui:locator?name=CaseNumber&binding=sf%3Aui%3Abinding%3Aobject%3Fobject%3DCase%26field%3DCaseNumber",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "FARM-101 Footer Component_REG-2791.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\01- UI Test Cases\\Bugs\\FARM-101 Footer Component_REG-2791.testcase",
+    "error": "Execution failed",
+    "details": "No rows found in table",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "POC-520 Enxoo - Blank Space.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\01- UI Test Cases\\Bugs\\POC-520 Enxoo - Blank Space.testcase",
+    "error": "Execution failed",
+    "details": "Assertion Failed.Regmain Oauth EqualTo Regmain Admin",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "PWC-126 VF modal window.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\01- UI Test Cases\\Bugs\\PWC-126 VF modal window.testcase",
+    "error": "Execution failed",
+    "details": "Error getting quick action list object.  Object: Opportunity, Cause: [ElementNotInteractableException: element not interactable: [object HTMLLIElement] has no size and location\n  (Session info: chrome=143.0.7499.147)\nBuild info: version: '4.16.1', revision: '9b4c83354e'\nSystem info: os.name: 'Windows Server 2022', os.arch: 'amd64', os.version: '10.0', java.version: '21.0.5'\nDriver info: org.openqa.selenium.chrome.ChromeDriver$ByteBuddy$68MjjEDw]",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "REG-3271 First lookup field.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\01- UI Test Cases\\Bugs\\REG-3271 First lookup field.testcase",
+    "error": "Execution failed",
+    "details": "Error doing interaction.  Connection Name: Bank_RetailDepartment, cause: [ElementNotInteractableException: element not interactable: [object HTMLLIElement] has no size and location\n  (Session info: chrome=143.0.7499.147)\nBuild info: version: '4.16.1', revision: '9b4c83354e'\nSystem info: os.name: 'Windows Server 2022', os.arch: 'amd64', os.version: '10.0', java.version: '21.0.5'\nDriver info: org.openqa.selenium.chrome.ChromeDriver$ByteBuddy$0CT9inOi]",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "CrossBrowser.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\01- UI Test Cases\\Mandatory_CrossBrowser\\CrossBrowser.testcase",
+    "error": "Execution failed",
+    "details": "Assertion Failed.Regression Oauth EqualTo Admin1 Provar",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "ALMBrandImageWithParams.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\02- API_TestCases\\ProvarAI\\ALMBrandImageWithParams.testcase",
+    "error": "Execution failed",
+    "details": "Error occurred while parsing the image format for https://www.almbrand.dk/alm.-brand/alm.-brand-media/images-jpg/private/brand/hub/hero-skiferie-koer-selv.png?width=1920&quality=92, reason: Unsupported file type: https://www.almbrand.dk/alm.-brand/alm.-brand-media/images-jpg/private/brand/hub/hero-skiferie-koer-selv.png?width=1920&quality=92. Allowed types are: png, jpg, jpeg, webp, gif.",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "ALMBrandImageWithoutParams.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\02- API_TestCases\\ProvarAI\\ALMBrandImageWithoutParams.testcase",
+    "error": "Execution failed",
+    "details": "[ImageEncodingException: Failed to load and encode image. Please check the image path or URL and try again., InvalidPathException: Illegal char <:> at index 73: C:\\Users\\Administrator\\Documents\\Jenkins\\workspace\\QAM_Classic\\test\\https:\\www.almbrand.dk\\alm.-brand\\alm.-brand-media\\images-jpg\\private\\brand\\hub\\hero-skiferie-koer-selv.png\nStack Trace:\njava.nio.file.InvalidPathException: Illegal char <:> at index 73: C:\\Users\\Administrator\\Documents\\Jenkins\\workspace\\QAM_Classic\\test\\https:\\www.almbrand.dk\\alm.-brand\\alm.-brand-media\\images-jpg\\private\\brand\\hub\\hero-skiferie-koer-selv.png\n\tat java.base/sun.nio.fs.WindowsPathParser.normalize(WindowsPathParser.java:204)\n\tat java.base/sun.nio.fs.WindowsPathParser.parse(WindowsPathParser.java:175)\n\tat java.base/sun.nio.fs.WindowsPathParser.parse(WindowsPathParser.java:77)\n\tat java.base/sun.nio.fs.WindowsPath.parse(WindowsPath.java:92)\n\tat java.base/sun.nio.fs.WindowsFileSystem.getPath(WindowsFileSystem.java:231)\n\tat java.base/java.nio.file.Path.of(Path.java:148)\n\tat java.base/java.nio.file.Paths.get(Paths.java:69)\n\tat com.provar.core.ai.support.ImageBase64Util.encodeImageToBase64(ImageBase64Util.java:39)\n\tat com.provar.core.ai.api.processor.ImageValidationProcessor.buildRequestMessage(ImageValidationProcessor.java:73)\n\tat com.provar.core.ai.api.processor.ImageValidationProcessor.validateImage(ImageValidationProcessor.java:36)\n\tat com.provar.core.ai.api.ImageValidator.execute(ImageValidator.java:80)\n\tat java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)\n\tat java.base/java.lang.reflect.Method.invoke(Method.java:580)\n\tat com.provar.core.testexecution.container.java.TestExecutionContainerImpl.invokeTestApi(TestExecutionContainerImpl.java:806)\n\tat com.provar.core.testexecution.container.java.LocalTestExecutionContainerRunner.doInvokeTestApi(LocalTestExecutionContainerRunner.java:777)\n\tat com.provar.core.testexecution.container.java.LocalTestExecutionContainerRunner$MessageProcessor.run(LocalTestExecutionContainerRunner.java:1451)\n]",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "ImageValidator_GIFFile_AbsolutePath.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\02- API_TestCases\\ProvarAI\\ImageValidator_GIFFile_AbsolutePath.testcase",
+    "error": "Execution failed",
+    "details": "Error occurred while parsing the image format for null/data/Images/file_example_GIF_3500kB.gif, reason: File does not exist: null/data/Images/file_example_GIF_3500kB.gif",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "ImageValidator_JPGFile_AbsolutePath.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\02- API_TestCases\\ProvarAI\\ImageValidator_JPGFile_AbsolutePath.testcase",
+    "error": "Execution failed",
+    "details": "Error occurred while parsing the image format for null/data/Images/Whycallitanything.jpg, reason: File does not exist: null/data/Images/Whycallitanything.jpg",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "ImageValidator_LargeFileErrorValidation.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\02- API_TestCases\\ProvarAI\\ImageValidator_LargeFileErrorValidation.testcase",
+    "error": "Execution failed",
+    "details": "Error occurred while parsing the image format for C:/Users/pooja.mittal/git/ProvarRegression_QAM/test/data/Images/sample_5184\u00d73456.gif, reason: File does not exist: C:/Users/pooja.mittal/git/ProvarRegression_QAM/test/data/Images/sample_5184\u00d73456.gif",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "ImageValidator_PNGFile_AbsolutePath.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\02- API_TestCases\\ProvarAI\\ImageValidator_PNGFile_AbsolutePath.testcase",
+    "error": "Execution failed",
+    "details": "Error occurred while parsing the image format for null/data/Images/file_example_PNG_500kB.png, reason: File does not exist: null/data/Images/file_example_PNG_500kB.png",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "ImageValidator_WEBPFile_AbsolutePath.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\02- API_TestCases\\ProvarAI\\ImageValidator_WEBPFile_AbsolutePath.testcase",
+    "error": "Execution failed",
+    "details": "Error occurred while parsing the image format for null/data/Images/file_example_WEBP_1500kB.webp, reason: File does not exist: null/data/Images/file_example_WEBP_1500kB.webp",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "Skuid Flow_PRO-11400.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\01- UI Test Cases\\Skuid\\Skuid Flow_PRO-11400.testcase",
+    "error": "Execution failed",
+    "details": "Error doing interaction.  Connection Name: SkuidOrg, cause: [NoSuchElementException: No elements matched the field locator.  Field name: accountInformation\nFor documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#no-such-element-exception\nBuild info: version: '4.16.1', revision: '9b4c83354e'\nSystem info: os.name: 'Windows Server 2022', os.arch: 'amd64', os.version: '10.0', java.version: '21.0.5'\nDriver info: driver.version: ProvarSeleniumDriver]",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "ChildToParentsToolingObject.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\02- API_TestCases\\Tooling API\\ChildToParentsToolingObject.testcase",
+    "error": "Execution failed",
+    "details": "SSO Login failed. Connection name: SF_SSO, SSO Connection name: {1}, messages:",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "ParentToChildToolingObject.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\02- API_TestCases\\Tooling API\\ParentToChildToolingObject.testcase",
+    "error": "Execution failed",
+    "details": "SSO Login failed. Connection name: SF_SSO, SSO Connection name: {1}, messages:",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "SampleToolingQuery.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\02- API_TestCases\\Tooling API\\SampleToolingQuery.testcase",
+    "error": "Execution failed",
+    "details": "SSO Login failed. Connection name: SF_SSO, SSO Connection name: {1}, messages:",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "SecurityHealthCheckRisks.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\02- API_TestCases\\Tooling API\\SecurityHealthCheckRisks.testcase",
+    "error": "Execution failed",
+    "details": "SSO Login failed. Connection name: SF_SSO, SSO Connection name: {1}, messages:",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "ToolingObjectAlias.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\02- API_TestCases\\Tooling API\\ToolingObjectAlias.testcase",
+    "error": "Execution failed",
+    "details": "SSO Login failed. Connection name: SF_SSO, SSO Connection name: {1}, messages:",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "ToolingObjectCOUNT.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\02- API_TestCases\\Tooling API\\ToolingObjectCOUNT.testcase",
+    "error": "Execution failed",
+    "details": "SSO Login failed. Connection name: SF_SSO, SSO Connection name: {1}, messages:",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  },
+  {
+    "testcase": "standardObjectAlias.testcase",
+    "testcase_path": "tests/ProvarRegressionSuite\\02- API_TestCases\\Tooling API\\standardObjectAlias.testcase",
+    "error": "Execution failed",
+    "details": "SSO Login failed. Connection name: SF_SSO, SSO Connection name: {1}, messages:",
+    "source": "JUnit (29).xml",
+    "webBrowserType": "Chrome",
+    "projectCachePath": "workspace\\QAM_Classic\\..\\.provarCaches",
+    "analysis": "\u23ed AI Skipped (AI is turned OFF)"
+  }
+]
