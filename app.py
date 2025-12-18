@@ -236,7 +236,9 @@ if st.session_state.df is not None and not st.session_state.df.empty:
     # ⬇ EXPORT
     # -------------------------------------------------------
     buffer = io.BytesIO()
-    df.to_excel(buffer, index=False)
+    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+    df.to_excel(writer, index=False)
+
     st.download_button(
         "⬇ Download Excel",
         buffer.getvalue(),
