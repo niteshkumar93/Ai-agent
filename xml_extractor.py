@@ -5,7 +5,6 @@ def extract_failed_tests(xml_file):
     root = tree.getroot()
 
     failed_tests = []
-
     for tc in root.findall("testcase"):
         name = tc.get("name")
         classname = tc.get("classname")

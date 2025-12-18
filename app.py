@@ -2,11 +2,11 @@ import streamlit as st
 import pandas as pd
 import time
 import io
+import os   # ✅ NEW
 
 from xml_extractor import extract_failed_tests
 from ai_reasoner import generate_ai_summary
 from dashboard import render_dashboard
-
 
 # -----------------------------------------------------------
 # 🟦 SESSION STATE (Fix 3 – Dashboard Memory)
@@ -14,6 +14,10 @@ from dashboard import render_dashboard
 if "show_dashboard" not in st.session_state:
     st.session_state.show_dashboard = False
 
+# -----------------------------------------------------------
+# 🌍 ENV DETECTION (Local vs Cloud)
+# -----------------------------------------------------------
+IS_CLOUD = os.getenv("STREAMLIT_CLOUD") == "true"
 
 # -----------------------------------------------------------
 # 🎨 THEME HANDLER — LIGHT / DARK MODE
@@ -34,7 +38,6 @@ def apply_theme(mode):
             </style>
         """, unsafe_allow_html=True)
 
-
 # -----------------------------------------------------------
 # 🌐 PAGE CONFIG
 # -----------------------------------------------------------
@@ -44,23 +47,26 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-
 # -----------------------------------------------------------
 # ⚙ SIDEBAR SETTINGS
 # -----------------------------------------------------------
 with st.sidebar.expander("⚙ Settings", expanded=True):
     theme_choice = st.radio("Theme Mode:", ["Dark", "Light"], index=0)
-    use_ai = st.checkbox("🤖 Use AI Analysis (Local Ollama Model)", value=False)
+    use_ai = st.checkbox("🤖 Use AI Analysis", value=False)
+
+    # ✅ AI ENVIRONMENT LINE (NEW)
+    if IS_CLOUD:
+        st.caption("☁️ AI Engine: OpenAI (Cloud)")
+    else:
+        st.caption("🖥️ AI Engine: Ollama (Local)")
 
 apply_theme(theme_choice)
-
 
 # -----------------------------------------------------------
 # 🏁 MAIN TITLE
 # -----------------------------------------------------------
 st.markdown("<h1 class='title-text'>🚀 Provar AI XML Analyzer</h1>", unsafe_allow_html=True)
 st.write("Upload one or more **JUnit XML Reports** below:")
-
 
 # -----------------------------------------------------------
 # 📄 MULTIPLE XML UPLOAD
@@ -71,7 +77,6 @@ uploaded_files = st.file_uploader(
     accept_multiple_files=True
 )
 
-
 # -----------------------------------------------------------
 # 🧠 MAIN ANALYSIS LOGIC
 # -----------------------------------------------------------
@@ -80,7 +85,7 @@ if uploaded_files:
     st.success(f"{len(uploaded_files)} file(s) uploaded.")
 
     if st.button("🔍 Analyze XML Reports", use_container_width=True):
-        st.session_state.show_dashboard = False  # Reset dashboard display
+        st.session_state.show_dashboard = False
 
         all_failures = []
 
@@ -106,7 +111,6 @@ if uploaded_files:
 
         results = []
 
-
         # STEP 2 — AI Analysis (Optional)
         for i, failure in enumerate(all_failures):
 
@@ -119,7 +123,7 @@ if uploaded_files:
                     details=failure["details"]
                 )
             else:
-                ai_summary = "⏭ AI Skipped (AI is turned OFF in Settings)"
+                ai_summary = "⏭ AI Skipped (AI is turned OFF)"
 
             failure["analysis"] = ai_summary
             results.append(failure)
@@ -129,9 +133,8 @@ if uploaded_files:
         st.success("🎉 Analysis Completed!")
         df = pd.DataFrame(results)
 
-
         # -----------------------------------------------------------
-        # 📌 Accordion UI — Clean Failure View
+        # 📌 Accordion UI
         # -----------------------------------------------------------
         st.subheader("📌 Failure Analysis")
 
@@ -142,9 +145,8 @@ if uploaded_files:
                 st.markdown("### 🤖 AI Summary")
                 st.write(row["analysis"])
 
-
         # -----------------------------------------------------------
-        # 📊 DASHBOARD BUTTON (Fix 3 – session_state)
+        # 📊 DASHBOARD
         # -----------------------------------------------------------
         if st.button("📊 Show Dashboard"):
             st.session_state.show_dashboard = True
@@ -152,9 +154,8 @@ if uploaded_files:
         if st.session_state.show_dashboard:
             render_dashboard(df)
 
-
         # -----------------------------------------------------------
-        # ⬇ EXPORT TO EXCEL (.xlsx)
+        # ⬇ EXPORT TO EXCEL
         # -----------------------------------------------------------
         if st.button("⬇ Export to Excel (.xlsx)"):
 
