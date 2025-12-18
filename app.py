@@ -10,7 +10,8 @@ from dashboard import render_dashboard
 from baseline_manager import (
     save_baseline,
     compare_with_baseline,
-    get_baseline_history
+    get_baseline_history,
+    rollback_baseline
 )
 
 # -----------------------------------------------------------
@@ -64,9 +65,15 @@ st.set_page_config(
 with st.sidebar.expander("⚙ Settings", expanded=True):
     theme_choice = st.radio("Theme Mode:", ["Dark", "Light"], index=0)
     use_ai = st.checkbox("🤖 Use AI Analysis", value=False)
+
     project_name = st.text_input(
         "📦 Project Name (Baseline Key)",
         value="QAM_Lightning",
+    )
+
+    admin_key = st.text_input(
+        "🔐 Admin Key (Required for Baseline / Rollback)",
+        type="password"
     )
 
     if IS_CLOUD:
@@ -195,17 +202,22 @@ if st.session_state.df is not None and not st.session_state.df.empty:
             st.write(row["analysis"])
 
     # -------------------------------
-    # SAVE BASELINE (AUTO‑COMMIT)
+    # 🧱 SAVE BASELINE (ADMIN ONLY)
     # -------------------------------
     if st.button("🧱 Mark this report as Baseline"):
-        save_baseline(project_name, df.to_dict(orient="records"))
-        st.session_state.baseline_saved = True
-
-    if st.session_state.baseline_saved:
-        st.success("✅ Baseline saved & committed to GitHub")
+        try:
+            save_baseline(
+                project_name,
+                df.to_dict(orient="records"),
+                admin_key
+            )
+            st.session_state.baseline_saved = True
+            st.success("✅ Baseline saved & committed to GitHub")
+        except Exception as e:
+            st.error(str(e))
 
     # -------------------------------
-    # BASELINE HISTORY UI
+    # 🕒 BASELINE HISTORY
     # -------------------------------
     st.subheader("🕒 Baseline History")
     history = get_baseline_history(project_name)
@@ -213,13 +225,32 @@ if st.session_state.df is not None and not st.session_state.df.empty:
     if not history:
         st.info("No baseline history found")
     else:
+        commit_map = {}
         for h in history[:5]:
-            with st.expander(h["commit"]["message"]):
-                st.write("Author:", h["commit"]["author"]["name"])
-                st.write("Date:", h["commit"]["author"]["date"])
+            label = f"{h['commit']['message']} | {h['commit']['author']['date']}"
+            commit_map[label] = h["sha"]
+
+        selected_commit = st.selectbox(
+            "Select baseline version",
+            commit_map.keys()
+        )
+
+        # -------------------------------
+        # 🔁 ROLLBACK (ADMIN ONLY)
+        # -------------------------------
+        if st.button("⏪ Rollback to selected baseline"):
+            try:
+                rollback_baseline(
+                    project_name,
+                    commit_map[selected_commit],
+                    admin_key
+                )
+                st.success("✅ Baseline rolled back successfully")
+            except Exception as e:
+                st.error(str(e))
 
     # -------------------------------
-    # DASHBOARD
+    # 📊 DASHBOARD
     # -------------------------------
     if st.button("📊 Show Dashboard"):
         st.session_state.show_dashboard = True
@@ -227,7 +258,7 @@ if st.session_state.df is not None and not st.session_state.df.empty:
         render_dashboard(df)
 
     # -------------------------------
-    # EXPORT
+    # ⬇ EXPORT
     # -------------------------------
     if st.button("⬇ Export to Excel (.xlsx)"):
         buffer = io.BytesIO()
