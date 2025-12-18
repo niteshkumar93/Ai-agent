@@ -120,7 +120,10 @@ if uploaded_files:
             for f in failures:
                 all_failures.append({
                     "testcase": f["name"],
-                    "testcase_path": f["testcase_path"],
+                    "testcase_path": f.get(
+                    "testcase_path",
+                   f["name"].replace(".", "/")
+),
                     "error": f["error"],
                     "details": f["details"],
                     "source": file.name,
