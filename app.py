@@ -147,7 +147,7 @@ if uploaded_files:
 
     st.subheader("📦 Baseline Selection")
 
-   selected_project = None
+    selected_project = None
 analysis_mode = "New analysis (ignore baseline)"
 baseline_exists = False
 
