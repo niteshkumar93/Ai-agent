@@ -13,6 +13,25 @@ from baseline_manager import (
     get_baseline_history,
     rollback_baseline,
 )
+KNOWN_PROJECTS = [
+    "VF_Lightning_Windows",
+    "Regmain-Flexi",
+    "Date_Time",
+    "CPQ_Classic",
+    "CPQ_Lightning",
+    "QAM_Lightning",
+    "QAM_Classic",
+    "Internationalization_pipeline",
+    "Lightning_Console_LogonAs",
+    "DynamicForm",
+    "Classic_Console_LogonAS",
+    "LWC_Pipeline",
+    "Regmain_LS_Windows",
+    "Regmain_LC_Windows",
+    "Regmain-VF",
+    "FSL",
+    "HYBRID_AUTOMATION_Pipeline",
+]
 
 # -----------------------------------------------------------
 # 🟦 SESSION STATE (TOP LEVEL)
@@ -97,10 +116,52 @@ uploaded_files = st.file_uploader(
     type=["xml"],
     accept_multiple_files=True,
 )
+selected_project = None
+baseline_exists = False
+
+if uploaded_files:
+    # Try auto-detect from first XML
+    sample_failures = extract_failed_tests(uploaded_files[0])
+    detected_project = None
+
+    if sample_failures:
+        detected_project = detect_project_from_path(
+            sample_failures[0].get("projectCachePath", "")
+        )
+
+    st.subheader("📦 Baseline Selection")
+
+    selected_project = st.selectbox(
+        "Select baseline project",
+        KNOWN_PROJECTS,
+        index=KNOWN_PROJECTS.index(detected_project)
+        if detected_project in KNOWN_PROJECTS else 0
+    )
+
+    from baseline_manager import load_baseline
+    baseline_exists = bool(load_baseline(selected_project))
+
+    if baseline_exists:
+        st.success("✅ Baseline available for this project")
+        analysis_mode = st.radio(
+            "Choose analysis mode",
+            ["Compare with baseline", "New analysis (ignore baseline)"]
+        )
+    else:
+        st.warning("⚠️ Baseline not available for this project")
+        analysis_mode = "New analysis (ignore baseline)"
+        st.info("You can save this report as a new baseline after analysis")
 
 # -----------------------------------------------------------
 # 🔧 HELPERS
 # -----------------------------------------------------------
+def detect_project_from_path(path: str):
+    if not path:
+        return None
+    for p in KNOWN_PROJECTS:
+        if f"\\{p}" in path or f"/{p}" in path:
+            return p
+    return None
 def shorten_project_cache_path(path: str) -> str:
     if not path:
         return ""
@@ -137,10 +198,15 @@ if uploaded_files and st.button("🔍 Analyze XML Reports", use_container_width=
                 ),
             })
 
-    new_failures, existing_failures = compare_with_baseline(
-        project_name,
-        all_failures,
+    if analysis_mode == "Compare with baseline":
+     new_failures, existing_failures = compare_with_baseline(
+        selected_project,
+        all_failures
     )
+else:
+    new_failures = all_failures
+    existing_failures = []
+
 
     st.subheader("📊 Baseline Comparison")
     st.success(f"🆕 New Failures: {len(new_failures)}")
@@ -183,15 +249,17 @@ if st.session_state.df is not None and not st.session_state.df.empty:
     # -------------------------------------------------------
     # 🧱 SAVE BASELINE
     # -------------------------------------------------------
-    if st.button("🧱 Mark this report as Baseline"):
-        if not admin_key:
-            st.error("Admin key required")
-        else:
-            try:
-                save_baseline(project_name, df.to_dict("records"), admin_key)
-                st.session_state.baseline_saved = True
-            except Exception as e:
-                st.error(str(e))
+    if st.button("🧱 Save as Baseline"):
+     try:
+        save_baseline(
+            selected_project,
+            df.to_dict(orient="records"),
+            admin_key
+        )
+        st.success(f"✅ Baseline saved for {selected_project}")
+     except Exception as e:
+        st.error(str(e))
+
 
     if st.session_state.baseline_saved:
         st.success("✅ Baseline saved & committed to GitHub")
@@ -237,7 +305,7 @@ if st.session_state.df is not None and not st.session_state.df.empty:
     # -------------------------------------------------------
     buffer = io.BytesIO()
     with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-      df.to_excel(writer, index=False)
+     df.to_excel(writer, index=False)
 
     st.download_button(
         "⬇ Download Excel",
