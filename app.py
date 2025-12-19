@@ -217,7 +217,7 @@ if uploaded_files and st.button("🔍 Analyze XML Reports", use_container_width=
         time.sleep(0.03)
 
     if results:
-    st.session_state.df = pd.DataFrame(results)
+     st.session_state.df = pd.DataFrame(results)
 else:
     # Zero-failure baseline support
     st.session_state.df = pd.DataFrame([{
