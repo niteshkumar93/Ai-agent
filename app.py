@@ -118,36 +118,27 @@ analysis_mode = "New analysis"
 baseline_exists = False
 
 # -----------------------------------------------------------
-# BASELINE SELECTION (SAFE)
+# BASELINE SELECTION (SAFE + ZERO FAILURE SAFE)
 # -----------------------------------------------------------
+sample_failures = []          # ✅ ALWAYS defined
+detected_project = None
+
 if uploaded_files:
     sample_failures = safe_extract_failures(uploaded_files[0])
 
-detected_project = None
-
-# 1️⃣ Try from XML content
-if sample_failures:
-    detected_project = detect_project_from_path(
-        sample_failures[0].get("projectCachePath", "")
-    )
-
-# 2️⃣ Fallback: detect from filename
-if not detected_project:
-    detected_project = detect_project_from_filename(uploaded_files[0].name)
-
-    st.subheader("🧱 Baseline Management")
-
-if st.button("🧱 Save as Baseline"):
-    try:
-        save_baseline(
-            selected_project,
-            st.session_state.df.to_dict(orient="records"),
-            admin_key
+    # 🔹 Detect project EVEN IF ZERO FAILURES
+    if sample_failures:
+        detected_project = detect_project_from_path(
+            sample_failures[0].get("projectCachePath", "")
         )
-        st.success(f"✅ Baseline saved for {selected_project}")
-    except Exception as e:
-        st.error(str(e))
+    else:
+        # 👇 fallback: try reading project from filename
+        for p in KNOWN_PROJECTS:
+            if p.lower() in uploaded_files[0].name.lower():
+                detected_project = p
+                break
 
+    st.subheader("📦 Baseline Selection")
 
     selected_project = st.selectbox(
         "Select project baseline",
@@ -236,7 +227,8 @@ else:
 # -----------------------------------------------------------
 # REPORT
 # -----------------------------------------------------------
-if st.session_state.df is not None and not st.session_state.df.empty:
+if st.session_state.df is not None:
+
     df = st.session_state.df
 
     st.subheader("🧾 Report Environment")

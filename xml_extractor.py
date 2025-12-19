@@ -31,7 +31,8 @@ def extract_failed_tests(xml_file) -> List[Dict]:
     # --------------------------------------------------
     # FAILED TESTCASES
     # --------------------------------------------------
-    for testcase in root.findall("testcase"):
+    for testcase in root.findall(".//testcase"):
+
         failure = testcase.find("failure")
         if failure is not None:
             failures.append({
