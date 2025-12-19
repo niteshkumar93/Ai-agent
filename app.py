@@ -102,6 +102,7 @@ if uploaded_files:
         )
     else:
         st.warning("⚠️ No baseline found for this project")
+        analysis_mode = "New analysis (ignore baseline)"
 
 # -----------------------------------------------------------
 # ANALYZE
@@ -133,31 +134,20 @@ if uploaded_files and st.button("🔍 Analyze XML Reports", use_container_width=
         new_failures = all_failures
         existing_failures = []
 
+    # ✅ CORRECT COUNTS
     st.success(f"🆕 New Failures: {len(new_failures)}")
     st.info(f"♻️ Existing Failures: {len(existing_failures)}")
 
     results = []
 
-    if new_failures:
-        for f in new_failures:
-            f["analysis"] = (
-                generate_ai_summary(f["testcase"], f["error"], f["details"])
-                if use_ai else "⏭ AI Skipped"
-            )
-            results.append(f)
-    else:
-        # ✅ ZERO FAILURE REPORT
-        results.append({
-            "testcase": "✅ All Tests Passed",
-            "testcase_path": "",
-            "error": "",
-            "details": "",
-            "source": uploaded_files[0].name,
-            "webBrowserType": "N/A",
-            "projectCachePath": selected_project,
-            "analysis": "No failures detected"
-        })
+    for f in new_failures:
+        f["analysis"] = (
+            generate_ai_summary(f["testcase"], f["error"], f["details"])
+            if use_ai else "⏭ AI Skipped"
+        )
+        results.append(f)
 
+    # ✅ EMPTY DF = ZERO FAILURES
     st.session_state.df = pd.DataFrame(results)
     st.success("🎉 Analysis Completed!")
 
@@ -165,17 +155,22 @@ if uploaded_files and st.button("🔍 Analyze XML Reports", use_container_width=
 # REPORT
 # -----------------------------------------------------------
 if st.session_state.df is not None:
+
     df = st.session_state.df
 
     st.subheader("🧾 Report Environment")
     st.write(f"**Project:** `{selected_project}`")
 
     st.subheader("📌 Analysis Results")
-    for _, row in df.iterrows():
-        with st.expander(row["testcase"]):
-            st.write("❗ Error:", row["error"])
-            st.write("📄 Details:", row["details"])
-            st.write("🤖 AI:", row["analysis"])
+
+    if df.empty:
+        st.success("✅ Zero failures detected. All tests passed successfully.")
+    else:
+        for _, row in df.iterrows():
+            with st.expander(row["testcase"]):
+                st.write("❗ Error:", row["error"])
+                st.write("📄 Details:", row["details"])
+                st.write("🤖 AI:", row["analysis"])
 
     # -------------------------------------------------------
     # SAVE BASELINE (ZERO FAILURE SAFE)
