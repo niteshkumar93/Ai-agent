@@ -5,7 +5,6 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import io
 import os
-
 APP_VERSION = "2.0.1"  # Increment this with each deployment
 st.sidebar.caption(f"Version: {APP_VERSION}")
 from xml_extractor import extract_failed_tests
@@ -142,6 +141,18 @@ with st.sidebar:
     st.header("⚙️ Configuration")
     use_ai = st.checkbox("🤖 Use AI Analysis", value=False, help="Enable AI-powered failure analysis")
     admin_key = st.text_input("🔐 Admin Key", type="password", help="Required for saving baselines")
+    
+    st.markdown("---")
+    
+    # Reset Button
+    if st.button("🔄 Reset All", type="secondary", use_container_width=True, help="Clear all data and start fresh"):
+        # Clear session state
+        if 'all_results' in st.session_state:
+            del st.session_state.all_results
+        if 'upload_stats' in st.session_state:
+            del st.session_state.upload_stats
+        st.success("✅ UI Reset! Ready for new uploads.")
+        st.rerun()
     
     st.markdown("---")
     st.markdown("### 📊 Upload Statistics")
