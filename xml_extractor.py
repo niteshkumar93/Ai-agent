@@ -1,11 +1,20 @@
 import xml.etree.ElementTree as ET
+from typing import List, Dict
 
-def extract_failed_tests(xml_file):
+
+def extract_failed_tests(xml_file) -> List[Dict]:
+    """
+    Always returns a list.
+    - If failures exist → list of failed testcases
+    - If NO failures → list with ONE metadata-only record
+    """
+
+    xml_file.seek(0)  # 🔑 IMPORTANT for Streamlit re-runs
     tree = ET.parse(xml_file)
     root = tree.getroot()
 
     # --------------------------------------------------
-    # GLOBAL PROPERTIES (common for full report)
+    # GLOBAL PROPERTIES (report-level)
     # --------------------------------------------------
     properties = {}
     props_node = root.find("properties")
@@ -31,7 +40,22 @@ def extract_failed_tests(xml_file):
                 "error": failure.attrib.get("message", "Execution failed"),
                 "details": (failure.text or "").strip(),
                 "webBrowserType": web_browser,
-                "projectCachePath": project_cache_path
+                "projectCachePath": project_cache_path,
             })
+
+    # --------------------------------------------------
+    # ZERO FAILURE HANDLING (VERY IMPORTANT)
+    # --------------------------------------------------
+    if not failures:
+        # Return ONE metadata-only row
+        return [{
+            "name": "__NO_FAILURES__",
+            "testcase_path": "",
+            "error": "",
+            "details": "",
+            "webBrowserType": web_browser,
+            "projectCachePath": project_cache_path,
+            "_no_failures": True,  # 🔑 flag for app.py
+        }]
 
     return failures

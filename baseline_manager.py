@@ -42,6 +42,7 @@ def _get_baseline_path(project_name: str) -> str:
     os.makedirs(BASELINE_DIR, exist_ok=True)
     return os.path.join(BASELINE_DIR, f"{project_name}.json")
 
+
 def list_available_baselines() -> List[str]:
     if not os.path.exists(BASELINE_DIR):
         return []
@@ -51,7 +52,12 @@ def list_available_baselines() -> List[str]:
         if f.endswith(".json")
     ]
 
+
 def baseline_exists(project_name: str) -> bool:
+    """
+    A baseline EXISTS if the file exists,
+    even if it contains an empty list []
+    """
     return os.path.exists(_get_baseline_path(project_name))
 
 # -----------------------------------------------------------
@@ -59,27 +65,37 @@ def baseline_exists(project_name: str) -> bool:
 # -----------------------------------------------------------
 def load_baseline(project_name: str) -> List[Dict]:
     path = _get_baseline_path(project_name)
-    if not os.path.exists(path) or os.path.getsize(path) == 0:
+
+    if not os.path.exists(path):
         return []
+
+    if os.path.getsize(path) == 0:
+        return []
+
     try:
         with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            data = json.load(f)
+            return data if isinstance(data, list) else []
     except json.JSONDecodeError:
         return []
 
 # -----------------------------------------------------------
-# SAVE BASELINE (ADMIN ONLY)
+# SAVE BASELINE (ADMIN ONLY, ALLOWS EMPTY BASELINE)
 # -----------------------------------------------------------
 def save_baseline(project_name: str, failures: List[Dict], admin_key: str):
     expected = os.getenv("BASELINE_ADMIN_KEY")
+    if not expected:
+        raise RuntimeError("❌ BASELINE_ADMIN_KEY not configured")
+
     if admin_key != expected:
         raise PermissionError("❌ Admin key invalid")
 
+    # 🔑 IMPORTANT: allow empty baseline []
     path = _get_baseline_path(project_name)
     with open(path, "w", encoding="utf-8") as f:
-        json.dump(failures, f, indent=2)
+        json.dump(failures or [], f, indent=2)
 
-    _commit_to_github(project_name, failures)
+    _commit_to_github(project_name, failures or [])
 
 # -----------------------------------------------------------
 # GITHUB COMMIT (SAFE)
@@ -103,7 +119,7 @@ def _commit_to_github(project_name: str, failures: List[Dict]):
         sha = r.json().get("sha")
 
     content = base64.b64encode(
-        json.dumps(failures, indent=2).encode("utf-8")
+        json.dumps(failures or [], indent=2).encode("utf-8")
     ).decode("utf-8")
 
     payload = {
@@ -120,12 +136,20 @@ def _commit_to_github(project_name: str, failures: List[Dict]):
 # -----------------------------------------------------------
 def compare_with_baseline(project_name: str, current_failures: List[Dict]):
     baseline = load_baseline(project_name)
-    baseline_keys = {f"{b['testcase']}|{b['error']}" for b in baseline}
+
+    baseline_keys = {
+        f"{b.get('testcase')}|{b.get('error')}"
+        for b in baseline
+    }
 
     new_failures, existing_failures = [], []
+
     for f in current_failures:
-        key = f"{f['testcase']}|{f['error']}"
-        (existing_failures if key in baseline_keys else new_failures).append(f)
+        key = f"{f.get('testcase')}|{f.get('error')}"
+        if key in baseline_keys:
+            existing_failures.append(f)
+        else:
+            new_failures.append(f)
 
     return new_failures, existing_failures
 
@@ -143,8 +167,9 @@ def get_baseline_history(project_name: str):
 
     r = requests.get(url, headers=headers, params=params)
     return r.json() if r.status_code == 200 else []
+
 # -----------------------------------------------------------
-# 🔁 ROLLBACK BASELINE (ADMIN ONLY)
+# 🔁 ROLLBACK BASELINE (UNCHANGED)
 # -----------------------------------------------------------
 def rollback_baseline(project_name: str, commit_sha: str, admin_key: str):
     ADMIN_KEY = os.getenv("BASELINE_ADMIN_KEY")
@@ -167,7 +192,6 @@ def rollback_baseline(project_name: str, commit_sha: str, admin_key: str):
         "Accept": "application/vnd.github+json"
     }
 
-    # 1️⃣ Get file content from selected commit
     commit_url = f"https://api.github.com/repos/{GITHUB_REPO}/git/commits/{commit_sha}"
     commit_resp = requests.get(commit_url, headers=headers)
 
@@ -188,7 +212,6 @@ def rollback_baseline(project_name: str, commit_sha: str, admin_key: str):
     if not target_blob:
         raise RuntimeError("❌ Baseline file not found in selected commit")
 
-    # 2️⃣ Fetch blob content
     blob_url = f"https://api.github.com/repos/{GITHUB_REPO}/git/blobs/{target_blob}"
     blob_resp = requests.get(blob_url, headers=headers)
 
@@ -196,14 +219,11 @@ def rollback_baseline(project_name: str, commit_sha: str, admin_key: str):
         blob_resp.json()["content"]
     ).decode("utf-8")
 
-    # 3️⃣ Save locally
     local_path = _get_baseline_path(project_name)
     with open(local_path, "w", encoding="utf-8") as f:
         f.write(content)
 
-    # 4️⃣ Commit rollback version
     encoded = base64.b64encode(content.encode()).decode()
-
     current = requests.get(repo_url, headers=headers).json()
     sha = current.get("sha")
 

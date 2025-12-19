@@ -65,6 +65,14 @@ def detect_project_from_path(path: str):
         if f"\\{p}" in path or f"/{p}" in path:
             return p
     return None
+def detect_project_from_filename(filename: str):
+    if not filename:
+        return None
+    name = os.path.splitext(filename)[0]
+    for p in KNOWN_PROJECTS:
+        if p.lower() in name.lower():
+            return p
+    return None
 
 def shorten_project_cache_path(path: str) -> str:
     if not path:
@@ -115,13 +123,31 @@ baseline_exists = False
 if uploaded_files:
     sample_failures = safe_extract_failures(uploaded_files[0])
 
-    detected_project = None
-    if sample_failures:
-        detected_project = detect_project_from_path(
-            sample_failures[0].get("projectCachePath", "")
-        )
+detected_project = None
 
-    st.subheader("📦 Baseline Selection")
+# 1️⃣ Try from XML content
+if sample_failures:
+    detected_project = detect_project_from_path(
+        sample_failures[0].get("projectCachePath", "")
+    )
+
+# 2️⃣ Fallback: detect from filename
+if not detected_project:
+    detected_project = detect_project_from_filename(uploaded_files[0].name)
+
+    st.subheader("🧱 Baseline Management")
+
+if st.button("🧱 Save as Baseline"):
+    try:
+        save_baseline(
+            selected_project,
+            st.session_state.df.to_dict(orient="records"),
+            admin_key
+        )
+        st.success(f"✅ Baseline saved for {selected_project}")
+    except Exception as e:
+        st.error(str(e))
+
 
     selected_project = st.selectbox(
         "Select project baseline",
@@ -190,7 +216,21 @@ if uploaded_files and st.button("🔍 Analyze XML Reports", use_container_width=
         results.append(f)
         time.sleep(0.03)
 
+    if results:
     st.session_state.df = pd.DataFrame(results)
+else:
+    # Zero-failure baseline support
+    st.session_state.df = pd.DataFrame([{
+        "testcase": "✅ No Failures",
+        "testcase_path": "",
+        "error": "",
+        "details": "",
+        "source": uploaded_files[0].name,
+        "webBrowserType": "N/A",
+        "projectCachePath": selected_project,
+        "analysis": "All tests passed successfully"
+    }])
+
     st.success("🎉 Analysis Completed!")
 
 # -----------------------------------------------------------
