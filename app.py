@@ -6,6 +6,8 @@ from plotly.subplots import make_subplots
 import io
 import os
 
+APP_VERSION = "2.0.1"  # Increment this with each deployment
+st.sidebar.caption(f"Version: {APP_VERSION}")
 from xml_extractor import extract_failed_tests
 from ai_reasoner import generate_ai_summary
 from baseline_manager import save_baseline, compare_with_baseline, load_baseline
