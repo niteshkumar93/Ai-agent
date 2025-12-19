@@ -133,16 +133,28 @@ if uploaded_files and st.button("🔍 Analyze XML Reports", use_container_width=
     st.success("🎉 Analysis Completed!")
 
 # -----------------------------------------------------------
-# ANALYZE
+# ANALYZE (PER XML FILE — SINGLE SOURCE OF TRUTH)
 # -----------------------------------------------------------
 if uploaded_files and st.button("🔍 Analyze XML Reports", use_container_width=True):
 
-    all_failures = []
+    st.session_state.file_results = {}
 
     for file in uploaded_files:
         failures = safe_extract_failures(file)
+
+        # Detect project
+        project = None
+        if failures:
+            project = detect_project(
+                failures[0].get("projectCachePath", ""),
+                file.name
+            )
+        else:
+            project = detect_project("", file.name)
+
+        normalized = []
         for f in failures:
-            all_failures.append({
+            normalized.append({
                 "testcase": f["name"],
                 "testcase_path": f.get("testcase_path", ""),
                 "error": f["error"],
@@ -151,21 +163,38 @@ if uploaded_files and st.button("🔍 Analyze XML Reports", use_container_width=
                 "webBrowserType": f.get("webBrowserType", "Unknown"),
                 "projectCachePath": shorten_project_cache_path(
                     f.get("projectCachePath", "")
-                )
+                ),
             })
 
-    if analysis_mode == "Compare with baseline" and baseline_exists:
-        new_failures, existing_failures = compare_with_baseline(
-            selected_project, all_failures
-        )
-    else:
-        new_failures = all_failures
-        existing_failures = []
+        # Compare with baseline PER FILE
+        if load_baseline(project):
+            new_f, existing_f = compare_with_baseline(project, normalized)
+        else:
+            new_f, existing_f = normalized, []
+
+        st.session_state.file_results[file.name] = {
+            "project": project,
+            "new": new_f,
+            "existing": existing_f,
+            "all": normalized,
+        }
+
+    st.success("🎉 Analysis Completed!")
+
+# -----------------------------------------------------------
+# RESULTS (PER FILE VIEW)
+# -----------------------------------------------------------
 if "file_results" in st.session_state:
+
+    total_new = 0
+    total_existing = 0
 
     for file_name, data in st.session_state.file_results.items():
 
-        with st.expander(f"📄 {file_name} — {data['project']}", expanded=False):
+        total_new += len(data["new"])
+        total_existing += len(data["existing"])
+
+        with st.expander(f"📄 {file_name} — {data['project']}"):
 
             st.markdown(
                 f"""
@@ -175,84 +204,33 @@ if "file_results" in st.session_state:
                 """
             )
 
-            # ZERO FAILURE CASE
             if not data["new"]:
-                st.success("✅ No failures in this report")
+                st.success("✅ No failures in this XML report")
 
-            # Show failures
             for f in data["new"]:
-                with st.container():
-                    st.markdown(f"**❌ {f['testcase']}**")
-                    st.write("Path:", f["testcase_path"])
-                    st.write("Error:", f["error"])
-                    st.write("Details:", f["details"])
+                st.markdown(f"### ❌ {f['testcase']}")
+                st.write("Path:", f["testcase_path"])
+                st.write("Error:", f["error"])
+                st.write("Details:", f["details"])
 
-            # SAVE BASELINE (PER XML)
+            # 🔐 BASELINE PER XML FILE
             if st.button(
-                f"🧱 Save Baseline for {data['project']} ({file_name})",
+                f"🧱 Save Baseline ({file_name})",
                 key=f"baseline_{file_name}"
             ):
                 try:
                     save_baseline(
                         data["project"],
-                        data["all"],  # save full file baseline
+                        data["all"],
                         admin_key
                     )
                     st.success("✅ Baseline saved")
                 except Exception as e:
                     st.error(str(e))
 
-    # ✅ CORRECT COUNTS
-    st.success(f"🆕 New Failures: {len(new_failures)}")
-    st.info(f"♻️ Existing Failures: {len(existing_failures)}")
-
-    results = []
-
-    for f in new_failures:
-        f["analysis"] = (
-            generate_ai_summary(f["testcase"], f["error"], f["details"])
-            if use_ai else "⏭ AI Skipped"
-        )
-        results.append(f)
-
-    # ✅ EMPTY DF = ZERO FAILURES
-    st.session_state.df = pd.DataFrame(results)
-    st.success("🎉 Analysis Completed!")
-
-# -----------------------------------------------------------
-# REPORT
-# -----------------------------------------------------------
-if st.session_state.df is not None:
-
-    df = st.session_state.df
-
-    st.subheader("🧾 Report Environment")
-    st.write(f"**Project:** `{selected_project}`")
-
-    st.subheader("📌 Analysis Results")
-
-    if df.empty:
-        st.success("✅ Zero failures detected. All tests passed successfully.")
-    else:
-        for _, row in df.iterrows():
-            with st.expander(row["testcase"]):
-                st.write("❗ Error:", row["error"])
-                st.write("📄 Details:", row["details"])
-                st.write("🤖 AI:", row["analysis"])
-
-    # -------------------------------------------------------
-    # SAVE BASELINE (ZERO FAILURE SAFE)
-    # -------------------------------------------------------
-    if st.button("🧱 Save as Baseline"):
-        try:
-            save_baseline(
-                selected_project,
-                df.to_dict(orient="records"),
-                admin_key
-            )
-            st.success("✅ Baseline saved successfully")
-        except Exception as e:
-            st.error(str(e))
+    # ✅ GLOBAL SUMMARY (DERIVED, NOT AGGREGATED)
+    st.success(f"🆕 Total New Failures: {total_new}")
+    st.info(f"♻️ Total Existing Failures: {total_existing}")
 
     # -------------------------------------------------------
     # EXPORT
