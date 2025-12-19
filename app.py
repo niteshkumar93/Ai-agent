@@ -63,7 +63,7 @@ uploaded_files = st.file_uploader(
 )
 
 # -----------------------------------------------------------
-# PER XML PROCESSING
+# PER‑XML INDEPENDENT PROCESSING
 # -----------------------------------------------------------
 if uploaded_files:
 
@@ -76,7 +76,7 @@ if uploaded_files:
             project_path = failures[0].get("projectCachePath", "") if failures else ""
             detected_project = detect_project(project_path, xml_file.name)
 
-            # ---- Project selection (PER FILE)
+            # ---------------- Project (PER XML)
             project = st.selectbox(
                 "Select project baseline",
                 KNOWN_PROJECTS,
@@ -86,7 +86,7 @@ if uploaded_files:
 
             baseline_exists = bool(load_baseline(project))
 
-            # ---- Analysis mode (PER FILE)
+            # ---------------- Analysis mode (PER XML)
             if baseline_exists:
                 mode = st.radio(
                     "Analysis mode",
@@ -97,7 +97,7 @@ if uploaded_files:
                 st.warning("⚠️ No baseline found for this project")
                 mode = "New analysis (ignore baseline)"
 
-            # ---- Analyze button (PER FILE)
+            # ---------------- Analyze (PER XML)
             if st.button("🔍 Analyze XML", key=f"analyze_{xml_file.name}"):
 
                 normalized = []
@@ -114,32 +114,38 @@ if uploaded_files:
                         ),
                     })
 
+                # ---------- Baseline compare
                 if mode == "Compare with baseline" and baseline_exists:
                     new_f, existing_f = compare_with_baseline(project, normalized)
                 else:
                     new_f, existing_f = normalized, []
 
+                # ---------- CORRECT COUNTS
                 st.success(f"🆕 New Failures: {len(new_f)}")
                 st.info(f"♻️ Existing Failures: {len(existing_f)}")
 
-                if not new_f:
-                    st.success("✅ No failures in this XML report")
+                # ---------- ZERO FAILURE (FIXED)
+                if len(new_f) == 0:
+                    st.success("✅ Zero failures detected in this XML report")
 
-                # ---- Show failures
+                # ---------- Show failures
                 for f in new_f:
                     with st.expander(f"❌ {f['testcase']}"):
                         st.write("Path:", f["testcase_path"])
                         st.write("Error:", f["error"])
                         st.write("Details:", f["details"])
+
                         if use_ai:
                             st.write(
                                 "🤖 AI:",
                                 generate_ai_summary(
-                                    f["testcase"], f["error"], f["details"]
+                                    f["testcase"],
+                                    f["error"],
+                                    f["details"]
                                 )
                             )
 
-                # ---- Save baseline (PER XML)
+                # ---------- Save baseline (PER XML)
                 if st.button("🧱 Save Baseline", key=f"save_{xml_file.name}"):
                     try:
                         save_baseline(project, normalized, admin_key)
