@@ -53,11 +53,11 @@ if "baseline_saved" not in st.session_state:
 # -----------------------------------------------------------
 def safe_extract_failures(uploaded_file):
     try:
-        uploaded_file.seek(0)  # VERY IMPORTANT
+        uploaded_file.seek(0)
         return extract_failed_tests(uploaded_file)
     except Exception:
         return []
-
+    
 def detect_project_from_path(path: str):
     if not path:
         return None
@@ -112,10 +112,6 @@ uploaded_files = st.file_uploader(
     type=["xml"],
     accept_multiple_files=True,
 )
-
-selected_project = None
-analysis_mode = "New analysis"
-baseline_exists = False
 
 # -----------------------------------------------------------
 # BASELINE SELECTION (SAFE + ZERO FAILURE SAFE)
@@ -216,7 +212,7 @@ else:
         "testcase_path": "",
         "error": "",
         "details": "",
-        "source": uploaded_files[0].name,
+       "source": file.name,
         "webBrowserType": "N/A",
         "projectCachePath": selected_project,
         "analysis": "All tests passed successfully"
@@ -248,15 +244,15 @@ if st.session_state.df is not None:
     # SAVE BASELINE
     # -------------------------------------------------------
     if st.button("🧱 Save as Baseline"):
-        try:
-            save_baseline(
-                selected_project,
-                df.to_dict(orient="records"),
-                admin_key
-            )
-            st.success(f"✅ Baseline saved for {selected_project}")
-        except Exception as e:
-            st.error(str(e))
+     try:
+        save_baseline(
+            selected_project,
+            df.to_dict(orient="records") if not df.empty else [],
+            admin_key
+        )
+        st.success(f"✅ Baseline saved for {selected_project}")
+     except Exception as e:
+        st.error(str(e))
 
     # -------------------------------------------------------
     # EXPORT
