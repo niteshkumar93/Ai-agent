@@ -80,29 +80,57 @@ selected_project = None
 analysis_mode = "New analysis"
 baseline_exists = False
 
-if uploaded_files:
-    sample_failures = safe_extract_failures(uploaded_files[0])
-    sample_path = sample_failures[0]["projectCachePath"] if sample_failures else ""
-    selected_project = detect_project(sample_path, uploaded_files[0].name)
+if uploaded_files and st.button("🔍 Analyze XML Reports", use_container_width=True):
 
-    st.subheader("📦 Baseline Selection")
+    st.session_state.df = None
+    per_file_results = {}
 
-    selected_project = st.selectbox(
-        "Select project baseline",
-        KNOWN_PROJECTS,
-        index=KNOWN_PROJECTS.index(selected_project)
-    )
+    for file in uploaded_files:
+        failures = safe_extract_failures(file)
 
-    baseline_exists = bool(load_baseline(selected_project))
+        # Detect project
+        detected_project = None
+        if failures:
+            detected_project = detect_project_from_path(
+                failures[0].get("projectCachePath", "")
+            )
+        if not detected_project:
+            detected_project = detect_project_from_filename(file.name)
 
-    if baseline_exists:
-        analysis_mode = st.radio(
-            "Analysis mode",
-            ["Compare with baseline", "New analysis (ignore baseline)"]
-        )
-    else:
-        st.warning("⚠️ No baseline found for this project")
-        analysis_mode = "New analysis (ignore baseline)"
+        detected_project = detected_project or KNOWN_PROJECTS[0]
+
+        # Normalize failures
+        normalized = []
+        for f in failures:
+            normalized.append({
+                "testcase": f["name"],
+                "testcase_path": f.get("testcase_path", ""),
+                "error": f["error"],
+                "details": f["details"],
+                "source": file.name,
+                "webBrowserType": f.get("webBrowserType", "Unknown"),
+                "projectCachePath": shorten_project_cache_path(
+                    f.get("projectCachePath", "")
+                ),
+            })
+
+        # Compare baseline (per file!)
+        if load_baseline(detected_project):
+            new_f, existing_f = compare_with_baseline(
+                detected_project, normalized
+            )
+        else:
+            new_f, existing_f = normalized, []
+
+        per_file_results[file.name] = {
+            "project": detected_project,
+            "new": new_f,
+            "existing": existing_f,
+            "all": normalized,
+        }
+
+    st.session_state.file_results = per_file_results
+    st.success("🎉 Analysis Completed!")
 
 # -----------------------------------------------------------
 # ANALYZE
@@ -133,6 +161,46 @@ if uploaded_files and st.button("🔍 Analyze XML Reports", use_container_width=
     else:
         new_failures = all_failures
         existing_failures = []
+if "file_results" in st.session_state:
+
+    for file_name, data in st.session_state.file_results.items():
+
+        with st.expander(f"📄 {file_name} — {data['project']}", expanded=False):
+
+            st.markdown(
+                f"""
+                **Project:** `{data['project']}`  
+                🆕 **New Failures:** {len(data['new'])}  
+                ♻️ **Existing Failures:** {len(data['existing'])}
+                """
+            )
+
+            # ZERO FAILURE CASE
+            if not data["new"]:
+                st.success("✅ No failures in this report")
+
+            # Show failures
+            for f in data["new"]:
+                with st.container():
+                    st.markdown(f"**❌ {f['testcase']}**")
+                    st.write("Path:", f["testcase_path"])
+                    st.write("Error:", f["error"])
+                    st.write("Details:", f["details"])
+
+            # SAVE BASELINE (PER XML)
+            if st.button(
+                f"🧱 Save Baseline for {data['project']} ({file_name})",
+                key=f"baseline_{file_name}"
+            ):
+                try:
+                    save_baseline(
+                        data["project"],
+                        data["all"],  # save full file baseline
+                        admin_key
+                    )
+                    st.success("✅ Baseline saved")
+                except Exception as e:
+                    st.error(str(e))
 
     # ✅ CORRECT COUNTS
     st.success(f"🆕 New Failures: {len(new_failures)}")
