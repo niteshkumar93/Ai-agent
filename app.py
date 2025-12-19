@@ -6,11 +6,7 @@ import os
 from xml_extractor import extract_failed_tests
 from ai_reasoner import generate_ai_summary
 from dashboard import render_dashboard
-from baseline_manager import (
-    save_baseline,
-    compare_with_baseline,
-    load_baseline
-)
+from baseline_manager import save_baseline, compare_with_baseline, load_baseline
 
 # -----------------------------------------------------------
 # CONSTANTS
@@ -25,12 +21,6 @@ KNOWN_PROJECTS = [
 ]
 
 # -----------------------------------------------------------
-# SESSION STATE
-# -----------------------------------------------------------
-if "file_results" not in st.session_state:
-    st.session_state.file_results = {}
-
-# -----------------------------------------------------------
 # HELPERS
 # -----------------------------------------------------------
 def safe_extract_failures(uploaded_file):
@@ -40,9 +30,9 @@ def safe_extract_failures(uploaded_file):
     except Exception:
         return []
 
-def detect_project(project_path: str, filename: str):
+def detect_project(path: str, filename: str):
     for p in KNOWN_PROJECTS:
-        if project_path and (f"/{p}" in project_path or f"\\{p}" in project_path):
+        if path and (f"/{p}" in path or f"\\{p}" in path):
             return p
         if p.lower() in filename.lower():
             return p
@@ -73,132 +63,86 @@ uploaded_files = st.file_uploader(
 )
 
 # -----------------------------------------------------------
-# ANALYZE (SINGLE BUTTON – PER FILE LOGIC)
+# PER XML PROCESSING
 # -----------------------------------------------------------
-if uploaded_files and st.button("🔍 Analyze XML Reports", use_container_width=True):
+if uploaded_files:
 
-    st.session_state.file_results = {}
+    for xml_file in uploaded_files:
 
-    for file in uploaded_files:
-        failures = safe_extract_failures(file)
+        with st.expander(f"📄 {xml_file.name}", expanded=False):
 
-        # Detect project (safe even for zero failures)
-        project_path = failures[0].get("projectCachePath", "") if failures else ""
-        project = detect_project(project_path, file.name)
+            failures = safe_extract_failures(xml_file)
 
-        # Normalize failures
-        normalized = []
-        for f in failures:
-            normalized.append({
-                "testcase": f["name"],
-                "testcase_path": f.get("testcase_path", ""),
-                "error": f["error"],
-                "details": f["details"],
-                "source": file.name,
-                "webBrowserType": f.get("webBrowserType", "Unknown"),
-                "projectCachePath": shorten_project_cache_path(
-                    f.get("projectCachePath", "")
-                ),
-            })
+            project_path = failures[0].get("projectCachePath", "") if failures else ""
+            detected_project = detect_project(project_path, xml_file.name)
 
-        # Baseline comparison PER FILE
-        if load_baseline(project):
-            new_f, existing_f = compare_with_baseline(project, normalized)
-        else:
-            new_f, existing_f = normalized, []
-
-        st.session_state.file_results[file.name] = {
-            "project": project,
-            "new": new_f,
-            "existing": existing_f,
-            "all": normalized,
-        }
-
-    st.success("🎉 Analysis Completed!")
-
-# -----------------------------------------------------------
-# RESULTS — ONE ACCORDION PER XML FILE
-# -----------------------------------------------------------
-if st.session_state.file_results:
-
-    total_new = 0
-    total_existing = 0
-
-    st.subheader("📊 Analysis Results (Per XML File)")
-
-    for file_name, data in st.session_state.file_results.items():
-
-        total_new += len(data["new"])
-        total_existing += len(data["existing"])
-
-        with st.expander(f"📄 {file_name} — {data['project']}", expanded=False):
-
-            st.markdown(
-                f"""
-                **Project:** `{data['project']}`  
-                🆕 **New Failures:** {len(data['new'])}  
-                ♻️ **Existing Failures:** {len(data['existing'])}
-                """
+            # ---- Project selection (PER FILE)
+            project = st.selectbox(
+                "Select project baseline",
+                KNOWN_PROJECTS,
+                index=KNOWN_PROJECTS.index(detected_project),
+                key=f"project_{xml_file.name}"
             )
 
-            # ZERO FAILURE CASE
-            if not data["new"]:
-                st.success("✅ No failures in this XML report")
+            baseline_exists = bool(load_baseline(project))
 
-            # SHOW FAILURES
-            for f in data["new"]:
-                st.markdown(f"### ❌ {f['testcase']}")
-                st.write("**Path:**", f["testcase_path"])
-                st.write("**Error:**", f["error"])
-                st.write("**Details:**", f["details"])
+            # ---- Analysis mode (PER FILE)
+            if baseline_exists:
+                mode = st.radio(
+                    "Analysis mode",
+                    ["Compare with baseline", "New analysis (ignore baseline)"],
+                    key=f"mode_{xml_file.name}"
+                )
+            else:
+                st.warning("⚠️ No baseline found for this project")
+                mode = "New analysis (ignore baseline)"
 
-                if use_ai:
-                    f["analysis"] = generate_ai_summary(
-                        f["testcase"], f["error"], f["details"]
-                    )
-                    st.write("🤖 **AI:**", f["analysis"])
+            # ---- Analyze button (PER FILE)
+            if st.button("🔍 Analyze XML", key=f"analyze_{xml_file.name}"):
 
-            # BASELINE PER XML FILE
-            if st.button(
-                f"🧱 Save Baseline ({file_name})",
-                key=f"baseline_{file_name}"
-            ):
-                try:
-                    save_baseline(
-                        data["project"],
-                        data["all"],  # baseline saved per XML
-                        admin_key
-                    )
-                    st.success("✅ Baseline saved successfully")
-                except Exception as e:
-                    st.error(str(e))
+                normalized = []
+                for f in failures:
+                    normalized.append({
+                        "testcase": f["name"],
+                        "testcase_path": f.get("testcase_path", ""),
+                        "error": f["error"],
+                        "details": f["details"],
+                        "source": xml_file.name,
+                        "webBrowserType": f.get("webBrowserType", "Unknown"),
+                        "projectCachePath": shorten_project_cache_path(
+                            f.get("projectCachePath", "")
+                        ),
+                    })
 
-    # -------------------------------------------------------
-    # GLOBAL SUMMARY (CORRECT, NON‑DUPLICATED)
-    # -------------------------------------------------------
-    st.divider()
-    st.success(f"🆕 Total New Failures: {total_new}")
-    st.info(f"♻️ Total Existing Failures: {total_existing}")
+                if mode == "Compare with baseline" and baseline_exists:
+                    new_f, existing_f = compare_with_baseline(project, normalized)
+                else:
+                    new_f, existing_f = normalized, []
 
-    # -------------------------------------------------------
-    # EXPORT (ALL FILES COMBINED)
-    # -------------------------------------------------------
-    export_rows = []
-    for data in st.session_state.file_results.values():
-        export_rows.extend(data["all"])
+                st.success(f"🆕 New Failures: {len(new_f)}")
+                st.info(f"♻️ Existing Failures: {len(existing_f)}")
 
-    if export_rows:
-        df = pd.DataFrame(export_rows)
-        buffer = io.BytesIO()
-        with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-            df.to_excel(writer, index=False)
+                if not new_f:
+                    st.success("✅ No failures in this XML report")
 
-        st.download_button(
-            "⬇ Download Excel (All XMLs)",
-            buffer.getvalue(),
-            "Provar_AI_Analysis.xlsx",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+                # ---- Show failures
+                for f in new_f:
+                    with st.expander(f"❌ {f['testcase']}"):
+                        st.write("Path:", f["testcase_path"])
+                        st.write("Error:", f["error"])
+                        st.write("Details:", f["details"])
+                        if use_ai:
+                            st.write(
+                                "🤖 AI:",
+                                generate_ai_summary(
+                                    f["testcase"], f["error"], f["details"]
+                                )
+                            )
 
-    if st.button("📊 Show Dashboard"):
-        render_dashboard(pd.DataFrame(export_rows))
+                # ---- Save baseline (PER XML)
+                if st.button("🧱 Save Baseline", key=f"save_{xml_file.name}"):
+                    try:
+                        save_baseline(project, normalized, admin_key)
+                        st.success("✅ Baseline saved successfully")
+                    except Exception as e:
+                        st.error(str(e))
