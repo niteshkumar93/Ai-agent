@@ -5,10 +5,15 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import io
 import os
-APP_VERSION = "2.0.1"  # Increment this with each deployment
+APP_VERSION = "2.0.2"  # Increment this with each deployment
 st.sidebar.caption(f"Version: {APP_VERSION}")
 from xml_extractor import extract_failed_tests
-from ai_reasoner import generate_ai_summary
+from ai_reasoner import (
+    generate_ai_summary, 
+    generate_batch_analysis,
+    generate_jira_ticket,
+    suggest_test_improvements
+)
 from baseline_manager import save_baseline, compare_with_baseline, load_baseline
 
 # -----------------------------------------------------------
@@ -22,6 +27,8 @@ KNOWN_PROJECTS = [
     "Regmain_LS_Windows", "Regmain_LC_Windows",
     "Regmain-VF", "FSL", "HYBRID_AUTOMATION_Pipeline",
 ]
+
+APP_VERSION = "2.1.0"  # Enhanced with AI features
 
 # -----------------------------------------------------------
 # HELPERS
@@ -60,7 +67,7 @@ def render_summary_card(xml_name, new_count, existing_count, total_count):
     with col2:
         st.metric("New Failures", new_count, delta=None if new_count == 0 else f"+{new_count}", delta_color="inverse")
     with col3:
-        st.metric("Known Failures", existing_count)
+        st.metric("Existing Failures", existing_count)
     with col4:
         st.metric("Total Failures", total_count)
 
@@ -108,7 +115,7 @@ def render_comparison_chart(all_results):
 # -----------------------------------------------------------
 # PAGE CONFIGURATION
 # -----------------------------------------------------------
-st.set_page_config("Provar AI - Multi-XML Analyzer", layout="wide", page_icon="🚀")
+st.set_page_config("Provar AI - Enhanced XML Analyzer", layout="wide", page_icon="🚀")
 
 # Custom CSS for better UI
 st.markdown("""
@@ -129,28 +136,47 @@ st.markdown("""
         border-radius: 10px;
         margin-bottom: 1rem;
     }
+    .ai-feature-box {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 1rem;
+        border-radius: 10px;
+        color: white;
+        margin: 1rem 0;
+    }
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<div class="main-header">🚀 Provar AI - Multi-XML Analyzer</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-header">🚀 Provar AI - Enhanced XML Analyzer</div>', unsafe_allow_html=True)
 
 # -----------------------------------------------------------
 # SIDEBAR CONFIGURATION
 # -----------------------------------------------------------
 with st.sidebar:
     st.header("⚙️ Configuration")
-    use_ai = st.checkbox("🤖 Use AI Analysis", value=False, help="Enable AI-powered failure analysis")
+    
+    # AI Settings
+    st.subheader("🤖 AI Features")
+    use_ai = st.checkbox("Enable AI Analysis", value=True, help="Use Groq AI for intelligent failure analysis")
+    
+    # Advanced AI Features
+    with st.expander("🎯 Advanced AI Features"):
+        enable_batch_analysis = st.checkbox("Batch Pattern Analysis", value=True, help="Find common patterns across failures")
+        enable_jira_generation = st.checkbox("Jira Ticket Generation", value=True, help="Auto-generate Jira tickets")
+        enable_test_improvements = st.checkbox("Test Improvement Suggestions", value=False, help="Get suggestions to improve test stability")
+    
     admin_key = st.text_input("🔐 Admin Key", type="password", help="Required for saving baselines")
     
     st.markdown("---")
     
+    # Version info
+    st.caption(f"Version: {APP_VERSION}")
+    
     # Reset Button
     if st.button("🔄 Reset All", type="secondary", use_container_width=True, help="Clear all data and start fresh"):
         # Clear session state
-        if 'all_results' in st.session_state:
-            del st.session_state.all_results
-        if 'upload_stats' in st.session_state:
-            del st.session_state.upload_stats
+        for key in ['all_results', 'upload_stats', 'batch_analysis']:
+            if key in st.session_state:
+                del st.session_state[key]
         st.success("✅ UI Reset! Ready for new uploads.")
         st.rerun()
     
@@ -160,12 +186,25 @@ with st.sidebar:
         st.info(f"**Files Uploaded:** {st.session_state.upload_stats.get('count', 0)}")
         st.info(f"**Total Failures:** {st.session_state.upload_stats.get('total_failures', 0)}")
         st.info(f"**New Failures:** {st.session_state.upload_stats.get('new_failures', 0)}")
+    
+    # AI Status
+    st.markdown("---")
+    st.markdown("### 🤖 AI Status")
+    groq_key = os.getenv("GROQ_API_KEY")
+    openai_key = os.getenv("OPENAI_API_KEY")
+    
+    if groq_key:
+        st.success("✅ Groq AI (Free)")
+    elif openai_key:
+        st.info("ℹ️ OpenAI (Paid)")
+    else:
+        st.warning("⚠️ No AI configured")
 
 # -----------------------------------------------------------
 # FILE UPLOAD SECTION
 # -----------------------------------------------------------
 st.markdown("## 📁 Upload XML Reports")
-st.markdown("Upload multiple JUnit XML reports for simultaneous analysis")
+st.markdown("Upload multiple JUnit XML reports for simultaneous AI-powered analysis")
 
 uploaded_files = st.file_uploader(
     "Choose XML files",
@@ -186,7 +225,7 @@ if uploaded_files:
     # -----------------------------------------------------------
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        analyze_all = st.button("🔍 Analyze All Reports", type="primary", use_container_width=True)
+        analyze_all = st.button("🔍 Analyze All Reports with AI", type="primary", use_container_width=True)
     
     if analyze_all:
         st.session_state.all_results = []
@@ -250,6 +289,16 @@ if uploaded_files:
             'total_failures': total_failures,
             'new_failures': new_failures
         }
+        
+        # Generate batch analysis if enabled
+        if use_ai and enable_batch_analysis:
+            with st.spinner("🧠 Running batch pattern analysis..."):
+                all_failures = []
+                for result in st.session_state.all_results:
+                    all_failures.extend(result['new_failures'])
+                
+                if all_failures:
+                    st.session_state.batch_analysis = generate_batch_analysis(all_failures)
     
     # -----------------------------------------------------------
     # DISPLAY RESULTS
@@ -257,6 +306,19 @@ if uploaded_files:
     if st.session_state.all_results:
         
         st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
+        
+        # -----------------------------------------------------------
+        # 🆕 BATCH PATTERN ANALYSIS
+        # -----------------------------------------------------------
+        if 'batch_analysis' in st.session_state and st.session_state.batch_analysis:
+            st.markdown('<div class="ai-feature-box">', unsafe_allow_html=True)
+            st.markdown("## 🧠 AI Batch Pattern Analysis")
+            st.markdown("AI has analyzed all failures together to identify patterns and priorities.")
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            st.markdown(st.session_state.batch_analysis)
+            st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
+        
         st.markdown("## 📊 Overall Summary")
         
         # Overall statistics
@@ -313,10 +375,53 @@ if uploaded_files:
                                     with st.expander("View Details"):
                                         st.code(f['details'], language="text")
                                 
+                                # AI Features
                                 if use_ai:
-                                    with st.expander("🤖 AI Analysis"):
-                                        ai_analysis = generate_ai_summary(f['testcase'], f['error'], f['details'])
-                                        st.info(ai_analysis)
+                                    ai_tabs = []
+                                    if True:  # Basic analysis always available
+                                        ai_tabs.append("🤖 AI Analysis")
+                                    if enable_jira_generation:
+                                        ai_tabs.append("📝 Jira Ticket")
+                                    if enable_test_improvements:
+                                        ai_tabs.append("💡 Improvements")
+                                    
+                                    if len(ai_tabs) > 0:
+                                        ai_tab_objects = st.tabs(ai_tabs)
+                                        
+                                        # Basic AI Analysis
+                                        with ai_tab_objects[0]:
+                                            with st.spinner("Analyzing..."):
+                                                ai_analysis = generate_ai_summary(f['testcase'], f['error'], f['details'])
+                                                st.info(ai_analysis)
+                                        
+                                        # Jira Ticket Generation
+                                        if enable_jira_generation and len(ai_tab_objects) > 1:
+                                            with ai_tab_objects[1]:
+                                                with st.spinner("Generating Jira ticket..."):
+                                                    jira_content = generate_jira_ticket(
+                                                        f['testcase'], 
+                                                        f['error'], 
+                                                        f['details'],
+                                                        ai_analysis if 'ai_analysis' in locals() else ""
+                                                    )
+                                                    st.markdown(jira_content)
+                                                    st.download_button(
+                                                        "📥 Download Jira Content",
+                                                        jira_content,
+                                                        file_name=f"jira_{f['testcase'][:30]}.txt",
+                                                        key=f"jira_{idx}_{i}"
+                                                    )
+                                        
+                                        # Test Improvements
+                                        if enable_test_improvements and len(ai_tab_objects) > 2:
+                                            with ai_tab_objects[-1]:
+                                                with st.spinner("Generating improvement suggestions..."):
+                                                    improvements = suggest_test_improvements(
+                                                        f['testcase'],
+                                                        f['error'],
+                                                        f['details']
+                                                    )
+                                                    st.success(improvements)
                                 
                                 st.markdown("---")
                 
@@ -368,7 +473,7 @@ if uploaded_files:
 
 else:
     # Welcome message when no files uploaded
-    st.info("👆 Upload one or more XML files to begin analysis")
+    st.info("👆 Upload one or more XML files to begin AI-powered analysis")
     
     st.markdown("### 🎯 Features")
     col1, col2, col3 = st.columns(3)
@@ -377,7 +482,21 @@ else:
         st.write("Upload and analyze multiple XML reports simultaneously")
     with col2:
         st.markdown("**🤖 AI-Powered Insights**")
-        st.write("Get intelligent failure analysis and suggestions")
+        st.write("Get intelligent failure analysis with Groq (FREE)")
     with col3:
         st.markdown("**📈 Baseline Tracking**")
         st.write("Compare results against historical baselines")
+    
+    st.markdown("---")
+    
+    st.markdown("### 🆕 New AI Features")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("**🧠 Batch Pattern Analysis**")
+        st.write("AI identifies common patterns across all failures")
+    with col2:
+        st.markdown("**📝 Jira Auto-Generation**")
+        st.write("Create ready-to-use Jira tickets instantly")
+    with col3:
+        st.markdown("**💡 Test Improvements**")
+        st.write("Get suggestions to make tests more stable")
