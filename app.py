@@ -370,6 +370,7 @@ if uploaded_files:
                                  st.markdown("**Path:**")
                                  st.code(f['testcase_path'], language="text")
                                 with col2:
+                                 # Error details
                                  st.error(f"Error: {f['error']}")
                                  st.markdown("**Error Details (click copy icon ⤴️):**")
                                  st.code(f['details'], language="text")
