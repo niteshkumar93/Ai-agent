@@ -5,56 +5,9 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import io
 import os
-# At the top of your app.py after imports
 import base64
 from pathlib import Path
 
-# Load logo function
-@st.cache_data
-def get_logo():
-    try:
-        logo_path = Path("images/RoboProvarAI.png")
-        if logo_path.exists():
-            return base64.b64encode(logo_path.read_bytes()).decode()
-    except:
-        pass
-    return None
-
-# After st.set_page_config() and before other content
-logo_b64 = get_logo()
-
-if logo_b64:
-    st.markdown(f"""
-        <div style="text-align: center; padding: 2rem 0 1rem 0;">
-            <img src="data:image/png;base64,{logo_b64}" 
-                 style="width: 100px; height: 100px; margin-bottom: 1rem; 
-                        filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));
-                        animation: float 3s ease-in-out infinite;">
-            <h1 style="color: white; margin: 0; font-size: 2.2rem; 
-                       text-shadow: 0 2px 8px rgba(0,0,0,0.2); font-weight: 700;">
-                🤖 Provar AI Report Analysis and Baseline Tool
-            </h1>
-            <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem; font-size: 1rem;">
-                Intelligent XML Analysis with AI-Powered Insights
-            </p>
-        </div>
-        
-        <style>
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-        }
-        </style>
-    """, unsafe_allow_html=True)
-else:
-    # Fallback if logo not found
-    st.markdown("""
-        <div style="text-align: center; padding: 1rem 0;">
-            <h1 style="color: white; font-size: 2.2rem; text-shadow: 0 2px 8px rgba(0,0,0,0.2);">
-                🤖 Provar AI Report Analysis and Baseline Tool
-            </h1>
-        </div>
-    """, unsafe_allow_html=True)
 from xml_extractor import extract_failed_tests
 from ai_reasoner import (
     generate_ai_summary, 
@@ -63,6 +16,15 @@ from ai_reasoner import (
     suggest_test_improvements
 )
 from baseline_manager import save_baseline, compare_with_baseline, load_baseline
+
+# -----------------------------------------------------------
+# PAGE CONFIGURATION - MUST BE FIRST
+# -----------------------------------------------------------
+st.set_page_config(
+    page_title="Provar AI Report Analysis and Baseline Tool",
+    layout="wide",
+    page_icon="🤖"
+)
 
 # -----------------------------------------------------------
 # CONSTANTS
@@ -76,10 +38,234 @@ KNOWN_PROJECTS = [
     "Regmain-VF", "FSL", "HYBRID_AUTOMATION_Pipeline",
 ]
 
-APP_VERSION = "2.1.0"  # Enhanced with AI features
+APP_VERSION = "2.1.0"
 
 # -----------------------------------------------------------
-# HELPERS
+# LOAD LOGO
+# -----------------------------------------------------------
+@st.cache_data
+def get_logo():
+    try:
+        logo_path = Path("images/RoboProvarAI.png")
+        if logo_path.exists():
+            return base64.b64encode(logo_path.read_bytes()).decode()
+    except:
+        pass
+    return None
+
+# -----------------------------------------------------------
+# CSS STYLING - GLASS DESIGN
+# -----------------------------------------------------------
+st.markdown("""
+    <style>
+    /* Subtle gradient background */
+    .stApp {{
+        background: linear-gradient(135deg, 
+            #4158D0 0%,
+            #C850C0 46%,
+            #FFCC70 100%
+        );
+        background-size: 200% 200%;
+        animation: gradientShift 20s ease infinite;
+    }}
+    
+    @keyframes gradientShift {{
+        0% {{ background-position: 0% 50%; }}
+        50% {{ background-position: 100% 50%; }}
+        100% {{ background-position: 0% 50%; }}
+    }}
+    
+    @keyframes float {{
+        0%, 100% {{ transform: translateY(0px); }}
+        50% {{ transform: translateY(-10px); }}
+    }}
+    
+    /* Glass effect for elements */
+    .element-container, .stMarkdown, .stExpander, div[data-testid="stMetric"] {{
+        background: rgba(255, 255, 255, 0.08) !important;
+        backdrop-filter: blur(12px) saturate(150%) !important;
+        -webkit-backdrop-filter: blur(12px) saturate(150%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.18) !important;
+        border-radius: 16px !important;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
+        padding: 15px !important;
+        margin: 8px 0 !important;
+    }}
+    
+    /* Sidebar glass */
+    section[data-testid="stSidebar"] {{
+        background: rgba(255, 255, 255, 0.12) !important;
+        backdrop-filter: blur(20px) saturate(140%) !important;
+        -webkit-backdrop-filter: blur(20px) saturate(140%) !important;
+        border-right: 1px solid rgba(255, 255, 255, 0.2) !important;
+    }}
+    
+    section[data-testid="stSidebar"] > div {{
+        background: transparent !important;
+    }}
+    
+    /* Buttons */
+    .stButton > button {{
+        background: rgba(255, 255, 255, 0.12) !important;
+        backdrop-filter: blur(15px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.25) !important;
+        border-radius: 12px !important;
+        color: white !important;
+        font-weight: 600 !important;
+        padding: 10px 20px !important;
+        transition: all 0.3s ease !important;
+    }}
+    
+    .stButton > button:hover {{
+        background: rgba(255, 255, 255, 0.2) !important;
+        transform: translateY(-1px) !important;
+    }}
+    
+    .stButton > button[kind="primary"] {{
+        background: rgba(65, 88, 208, 0.5) !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    }}
+    
+    .stButton > button[kind="primary"]:hover {{
+        background: rgba(65, 88, 208, 0.7) !important;
+    }}
+    
+    /* Text styling */
+    h1, h2, h3, h4, h5, h6 {{
+        color: white !important;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.15) !important;
+    }}
+    
+    p, span, label {{
+        color: rgba(255, 255, 255, 0.95) !important;
+    }}
+    
+    /* File uploader */
+    section[data-testid="stFileUploader"] {{
+        background: rgba(255, 255, 255, 0.08) !important;
+        backdrop-filter: blur(15px) !important;
+        border: 2px dashed rgba(255, 255, 255, 0.3) !important;
+        border-radius: 16px !important;
+        padding: 25px !important;
+    }}
+    
+    /* Tabs */
+    .stTabs [data-baseweb="tab-list"] {{
+        background: rgba(255, 255, 255, 0.08) !important;
+        backdrop-filter: blur(15px) !important;
+        border-radius: 12px !important;
+        padding: 4px !important;
+    }}
+    
+    .stTabs [aria-selected="true"] {{
+        background: rgba(255, 255, 255, 0.18) !important;
+        color: white !important;
+        font-weight: 600 !important;
+    }}
+    
+    /* Alerts */
+    .stSuccess {{
+        background: rgba(52, 199, 89, 0.15) !important;
+        backdrop-filter: blur(15px) !important;
+        border: 1px solid rgba(52, 199, 89, 0.3) !important;
+        border-radius: 12px !important;
+    }}
+    
+    .stError {{
+        background: rgba(255, 59, 48, 0.15) !important;
+        backdrop-filter: blur(15px) !important;
+        border: 1px solid rgba(255, 59, 48, 0.3) !important;
+        border-radius: 12px !important;
+    }}
+    
+    .stWarning {{
+        background: rgba(255, 204, 0, 0.15) !important;
+        backdrop-filter: blur(15px) !important;
+        border: 1px solid rgba(255, 204, 0, 0.3) !important;
+        border-radius: 12px !important;
+    }}
+    
+    .stInfo {{
+        background: rgba(0, 122, 255, 0.15) !important;
+        backdrop-filter: blur(15px) !important;
+        border: 1px solid rgba(0, 122, 255, 0.3) !important;
+        border-radius: 12px !important;
+    }}
+    
+    /* Input fields */
+    .stTextInput > div > div > input {{
+        background: rgba(255, 255, 255, 0.12) !important;
+        backdrop-filter: blur(12px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.25) !important;
+        border-radius: 10px !important;
+        color: white !important;
+    }}
+    
+    /* Scrollbar */
+    ::-webkit-scrollbar {{
+        width: 8px;
+    }}
+    
+    ::-webkit-scrollbar-thumb {{
+        background: rgba(255, 255, 255, 0.25);
+        border-radius: 10px;
+    }}
+    
+    /* Section divider */
+    .section-divider {{
+        border-top: 1px solid rgba(255, 255, 255, 0.2);
+        margin: 2rem 0;
+    }}
+    
+    /* AI feature box */
+    .ai-feature-box {{
+        background: rgba(65, 88, 208, 0.15) !important;
+        backdrop-filter: blur(15px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        padding: 1rem;
+        border-radius: 12px;
+        color: white;
+        margin: 1rem 0;
+    }}
+    </style>
+""", unsafe_allow_html=True)
+
+# -----------------------------------------------------------
+# HEADER WITH LOGO
+# -----------------------------------------------------------
+logo_b64 = get_logo()
+
+if logo_b64:
+    st.markdown(f"""
+        <div style="text-align: center; padding: 2rem 0 1rem 0;">
+            <img src="data:image/png;base64,{logo_b64}" 
+                 style="width: 100px; height: 100px; margin-bottom: 1rem; 
+                        filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));
+                        animation: float 3s ease-in-out infinite;">
+            <h1 style="color: white; margin: 0; font-size: 2.2rem; 
+                       text-shadow: 0 2px 8px rgba(0,0,0,0.2); font-weight: 700;">
+                Provar AI Report Analysis and Baseline Tool
+            </h1>
+            <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem; font-size: 1rem;">
+                Intelligent XML Analysis with AI-Powered Insights
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
+else:
+    # Fallback if logo not found
+    st.markdown("""
+        <div style="text-align: center; padding: 1rem 0;">
+            <h1 style="color: white; font-size: 2.2rem; text-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+                🤖 Provar AI Report Analysis and Baseline Tool
+            </h1>
+            <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem; font-size: 1rem;">
+                Intelligent XML Analysis with AI-Powered Insights
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
+
+# -----------------------------------------------------------
+# HELPER FUNCTIONS
 # -----------------------------------------------------------
 def safe_extract_failures(uploaded_file):
     try:
@@ -106,7 +292,6 @@ def shorten_project_cache_path(path):
     return path.replace("/", "\\").split("\\")[-1]
 
 def render_summary_card(xml_name, new_count, existing_count, total_count):
-    """Render a summary card for each XML file"""
     status_color = "🟢" if new_count == 0 else "🔴"
     
     col1, col2, col3, col4 = st.columns(4)
@@ -120,7 +305,6 @@ def render_summary_card(xml_name, new_count, existing_count, total_count):
         st.metric("Total Failures", total_count)
 
 def render_comparison_chart(all_results):
-    """Create a comparison chart across all uploaded XMLs"""
     if not all_results:
         return
     
@@ -161,53 +345,6 @@ def render_comparison_chart(all_results):
     st.plotly_chart(fig, use_container_width=True)
 
 # -----------------------------------------------------------
-# PAGE CONFIGURATION
-# -----------------------------------------------------------
-# Header with custom logo
-col1, col2, col3 = st.columns([1, 3, 1])
-with col2:
-    st.markdown("""
-        <div style="text-align: center; padding: 1rem 0;">
-            <img src="https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/assets/robot_logo.png" 
-                 style="width: 80px; height: 80px; margin-bottom: 1rem; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));">
-            <h1 style="color: white; margin: 0; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-                Provar AI Report Analysis and Baseline Tool
-            </h1>
-        </div>
-    """, unsafe_allow_html=True)
-
-# Custom CSS for better UI
-st.markdown("""
-    <style>
-    .main-header {
-        font-size: 2.5rem;
-        font-weight: bold;
-        color: #1f77b4;
-        text-align: center;
-        padding: 1rem 0;
-    }
-    .section-divider {
-        border-top: 2px solid #e0e0e0;
-        margin: 2rem 0;
-    }
-    .stExpander {
-        border: 1px solid #e0e0e0;
-        border-radius: 10px;
-        margin-bottom: 1rem;
-    }
-    .ai-feature-box {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 1rem;
-        border-radius: 10px;
-        color: white;
-        margin: 1rem 0;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-st.markdown('<div class="main-header">🤖 Provar AI Report Analysis and Baseline Tool</div>', unsafe_allow_html=True)
-
-# -----------------------------------------------------------
 # SIDEBAR CONFIGURATION
 # -----------------------------------------------------------
 with st.sidebar:
@@ -232,7 +369,6 @@ with st.sidebar:
     
     # Reset Button
     if st.button("🔄 Reset All", type="secondary", use_container_width=True, help="Clear all data and start fresh"):
-        # Clear session state
         for key in ['all_results', 'upload_stats', 'batch_analysis']:
             if key in st.session_state:
                 del st.session_state[key]
@@ -275,12 +411,11 @@ uploaded_files = st.file_uploader(
 if uploaded_files:
     st.success(f"✅ {len(uploaded_files)} file(s) uploaded successfully!")
     
-    # Initialize session state for results
     if 'all_results' not in st.session_state:
         st.session_state.all_results = []
     
     # -----------------------------------------------------------
-    # GLOBAL ANALYSIS BUTTON
+    # ANALYSIS BUTTON
     # -----------------------------------------------------------
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
@@ -289,7 +424,6 @@ if uploaded_files:
     if analyze_all:
         st.session_state.all_results = []
         
-        # Progress tracking
         progress_bar = st.progress(0)
         status_text = st.empty()
         
@@ -315,14 +449,12 @@ if uploaded_files:
                             "projectCachePath": shorten_project_cache_path(f.get("projectCachePath", "")),
                         })
                 
-                # Compare with baseline
                 baseline_exists = bool(load_baseline(detected_project))
                 if baseline_exists:
                     new_f, existing_f = compare_with_baseline(detected_project, normalized)
                 else:
                     new_f, existing_f = normalized, []
                 
-                # Store results
                 st.session_state.all_results.append({
                     'filename': xml_file.name,
                     'project': detected_project,
@@ -339,7 +471,6 @@ if uploaded_files:
         status_text.text("✅ Analysis complete!")
         progress_bar.empty()
         
-        # Update upload statistics
         total_failures = sum(r['total_count'] for r in st.session_state.all_results)
         new_failures = sum(r['new_count'] for r in st.session_state.all_results)
         
@@ -349,7 +480,6 @@ if uploaded_files:
             'new_failures': new_failures
         }
         
-        # Generate batch analysis if enabled
         if use_ai and enable_batch_analysis:
             with st.spinner("🧠 Running batch pattern analysis..."):
                 all_failures = []
@@ -366,9 +496,7 @@ if uploaded_files:
         
         st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
         
-        # -----------------------------------------------------------
-        # 🆕 BATCH PATTERN ANALYSIS
-        # -----------------------------------------------------------
+        # Batch Analysis
         if 'batch_analysis' in st.session_state and st.session_state.batch_analysis:
             st.markdown('<div class="ai-feature-box">', unsafe_allow_html=True)
             st.markdown("## 🧠 AI Batch Pattern Analysis")
@@ -380,7 +508,6 @@ if uploaded_files:
         
         st.markdown("## 📊 Overall Summary")
         
-        # Overall statistics
         total_new = sum(r['new_count'] for r in st.session_state.all_results)
         total_existing = sum(r['existing_count'] for r in st.session_state.all_results)
         total_all = sum(r['total_count'] for r in st.session_state.all_results)
@@ -395,17 +522,14 @@ if uploaded_files:
         with col4:
             st.metric("📈 Total All Failures", total_all)
         
-        # Comparison chart
         render_comparison_chart(st.session_state.all_results)
         
         st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
         st.markdown("## 📋 Detailed Results by File")
         
-        # Individual file results
         for idx, result in enumerate(st.session_state.all_results):
             with st.expander(f"📄 {result['filename']} - Project: {result['project']}", expanded=False):
                 
-                # Summary card for this file
                 render_summary_card(
                     result['filename'],
                     result['new_count'],
@@ -415,7 +539,6 @@ if uploaded_files:
                 
                 st.markdown("---")
                 
-                # Tabs for different failure types
                 tab1, tab2, tab3 = st.tabs(["🆕 New Failures", "♻️ Existing Failures", "⚙️ Actions"])
                 
                 with tab1:
@@ -434,10 +557,9 @@ if uploaded_files:
                                     with st.expander("View Details"):
                                         st.code(f['details'], language="text")
                                 
-                                # AI Features
                                 if use_ai:
                                     ai_tabs = []
-                                    if True:  # Basic analysis always available
+                                    if True:
                                         ai_tabs.append("🤖 AI Analysis")
                                     if enable_jira_generation:
                                         ai_tabs.append("📝 Jira Ticket")
@@ -447,13 +569,11 @@ if uploaded_files:
                                     if len(ai_tabs) > 0:
                                         ai_tab_objects = st.tabs(ai_tabs)
                                         
-                                        # Basic AI Analysis
                                         with ai_tab_objects[0]:
                                             with st.spinner("Analyzing..."):
                                                 ai_analysis = generate_ai_summary(f['testcase'], f['error'], f['details'])
                                                 st.info(ai_analysis)
                                         
-                                        # Jira Ticket Generation
                                         if enable_jira_generation and len(ai_tab_objects) > 1:
                                             with ai_tab_objects[1]:
                                                 with st.spinner("Generating Jira ticket..."):
@@ -471,7 +591,6 @@ if uploaded_files:
                                                         key=f"jira_{idx}_{i}"
                                                     )
                                         
-                                        # Test Improvements
                                         if enable_test_improvements and len(ai_tab_objects) > 2:
                                             with ai_tab_objects[-1]:
                                                 with st.spinner("Generating improvement suggestions..."):
@@ -516,7 +635,6 @@ if uploaded_files:
                         else:
                             st.warning("⚠️ No baseline found")
                     
-                    # Export options
                     st.markdown("### 📤 Export Options")
                     export_data = pd.DataFrame(result['new_failures'] + result['existing_failures'])
                     
@@ -531,7 +649,6 @@ if uploaded_files:
                         )
 
 else:
-    # Welcome message when no files uploaded
     st.info("👆 Upload one or more XML files to begin AI-powered analysis")
     
     st.markdown("### 🎯 Features")
