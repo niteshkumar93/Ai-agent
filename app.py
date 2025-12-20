@@ -5,7 +5,56 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import io
 import os
+# At the top of your app.py after imports
+import base64
+from pathlib import Path
 
+# Load logo function
+@st.cache_data
+def get_logo():
+    try:
+        logo_path = Path("images/robot_logo.png")
+        if logo_path.exists():
+            return base64.b64encode(logo_path.read_bytes()).decode()
+    except:
+        pass
+    return None
+
+# After st.set_page_config() and before other content
+logo_b64 = get_logo()
+
+if logo_b64:
+    st.markdown(f"""
+        <div style="text-align: center; padding: 2rem 0 1rem 0;">
+            <img src="data:image/png;base64,{logo_b64}" 
+                 style="width: 100px; height: 100px; margin-bottom: 1rem; 
+                        filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));
+                        animation: float 3s ease-in-out infinite;">
+            <h1 style="color: white; margin: 0; font-size: 2.2rem; 
+                       text-shadow: 0 2px 8px rgba(0,0,0,0.2); font-weight: 700;">
+                🤖 Provar AI Report Analysis and Baseline Tool
+            </h1>
+            <p style="color: rgba(255,255,255,0.8); margin-top: 0.5rem; font-size: 1rem;">
+                Intelligent XML Analysis with AI-Powered Insights
+            </p>
+        </div>
+        
+        <style>
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        </style>
+    """, unsafe_allow_html=True)
+else:
+    # Fallback if logo not found
+    st.markdown("""
+        <div style="text-align: center; padding: 1rem 0;">
+            <h1 style="color: white; font-size: 2.2rem; text-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+                🤖 Provar AI Report Analysis and Baseline Tool
+            </h1>
+        </div>
+    """, unsafe_allow_html=True)
 from xml_extractor import extract_failed_tests
 from ai_reasoner import (
     generate_ai_summary, 
@@ -114,7 +163,18 @@ def render_comparison_chart(all_results):
 # -----------------------------------------------------------
 # PAGE CONFIGURATION
 # -----------------------------------------------------------
-st.set_page_config("Provar AI - Enhanced XML Analyzer", layout="wide", page_icon="🚀")
+# Header with custom logo
+col1, col2, col3 = st.columns([1, 3, 1])
+with col2:
+    st.markdown("""
+        <div style="text-align: center; padding: 1rem 0;">
+            <img src="https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/assets/robot_logo.png" 
+                 style="width: 80px; height: 80px; margin-bottom: 1rem; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));">
+            <h1 style="color: white; margin: 0; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                Provar AI Report Analysis and Baseline Tool
+            </h1>
+        </div>
+    """, unsafe_allow_html=True)
 
 # Custom CSS for better UI
 st.markdown("""
