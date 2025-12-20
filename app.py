@@ -5,6 +5,8 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import io
 import os
+st.write("Execution Time Raw:", result.get("execution_time"))
+
 from datetime import datetime
 def format_execution_time(raw_time: str):
     if raw_time in (None, "", "Unknown"):
