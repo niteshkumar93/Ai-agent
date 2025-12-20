@@ -14,39 +14,7 @@ from ai_reasoner import (
     suggest_test_improvements
 )
 from baseline_manager import save_baseline, compare_with_baseline, load_baseline
-# -----------------------------------------------------------
-# UI ENHANCEMENTS   
 
-# 1. Dark Mode
-if 'dark_mode' not in st.session_state:
-    st.session_state.dark_mode = False
-
-col1, col2 = st.columns([6, 1])
-with col2:
-    if st.button("🌙" if not st.session_state.dark_mode else "☀️"):
-        st.session_state.dark_mode = not st.session_state.dark_mode
-        st.rerun()
-
-# 2. Search & Filter
-col1, col2, col3 = st.columns([2, 1, 1])
-with col1:
-    search = st.text_input("🔍 Search", placeholder="Search test cases...")
-with col2:
-    browser = st.selectbox("Browser", ["All", "Chrome", "Firefox", "Safari"])
-with col3:
-    priority = st.selectbox("Priority", ["All", "High", "Medium", "Low"])
-
-# 3. Sort Options
-sort_by = st.radio("Sort by:", ["Priority", "Time", "Occurrences"], horizontal=True)
-
-# 4. Copy Button
-if st.button("📋 Copy Test Name"):
-    st.code(failure['testcase'])
-    st.success("✅ Copied!")
-
-# 5. Collapsible Sections
-with st.expander(f"🔴 {failure['testcase']}", expanded=False):
-    st.write(failure['details'])
 # -----------------------------------------------------------
 # CONSTANTS
 # -----------------------------------------------------------
@@ -530,4 +498,4 @@ else:
         st.write("Create ready-to-use Jira tickets instantly")
     with col3:
         st.markdown("**💡 Test Improvements**")
-        st.write("Get suggestions to make tests more stable") 
+        st.write("Get suggestions to make tests more stable")
