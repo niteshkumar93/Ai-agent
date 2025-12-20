@@ -5,7 +5,6 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import io
 import os
-from datetime import datetime
 
 from xml_extractor import extract_failed_tests
 from ai_reasoner import (
@@ -15,7 +14,39 @@ from ai_reasoner import (
     suggest_test_improvements
 )
 from baseline_manager import save_baseline, compare_with_baseline, load_baseline
+# -----------------------------------------------------------
+# UI ENHANCEMENTS   
 
+# 1. Dark Mode
+if 'dark_mode' not in st.session_state:
+    st.session_state.dark_mode = False
+
+col1, col2 = st.columns([6, 1])
+with col2:
+    if st.button("🌙" if not st.session_state.dark_mode else "☀️"):
+        st.session_state.dark_mode = not st.session_state.dark_mode
+        st.rerun()
+
+# 2. Search & Filter
+col1, col2, col3 = st.columns([2, 1, 1])
+with col1:
+    search = st.text_input("🔍 Search", placeholder="Search test cases...")
+with col2:
+    browser = st.selectbox("Browser", ["All", "Chrome", "Firefox", "Safari"])
+with col3:
+    priority = st.selectbox("Priority", ["All", "High", "Medium", "Low"])
+
+# 3. Sort Options
+sort_by = st.radio("Sort by:", ["Priority", "Time", "Occurrences"], horizontal=True)
+
+# 4. Copy Button
+if st.button("📋 Copy Test Name"):
+    st.code(failure['testcase'])
+    st.success("✅ Copied!")
+
+# 5. Collapsible Sections
+with st.expander(f"🔴 {failure['testcase']}", expanded=False):
+    st.write(failure['details'])
 # -----------------------------------------------------------
 # CONSTANTS
 # -----------------------------------------------------------
@@ -28,27 +59,7 @@ KNOWN_PROJECTS = [
     "Regmain-VF", "FSL", "HYBRID_AUTOMATION_Pipeline",
 ]
 
-APP_VERSION = "3.0.0"  # Enhanced UI/UX Version
-
-# -----------------------------------------------------------
-# SESSION STATE INITIALIZATION
-# -----------------------------------------------------------
-if 'dark_mode' not in st.session_state:
-    st.session_state.dark_mode = False
-if 'all_results' not in st.session_state:
-    st.session_state.all_results = []
-if 'expanded_failures' not in st.session_state:
-    st.session_state.expanded_failures = {}
-if 'search_term' not in st.session_state:
-    st.session_state.search_term = ""
-if 'selected_browser' not in st.session_state:
-    st.session_state.selected_browser = "All"
-if 'selected_priority' not in st.session_state:
-    st.session_state.selected_priority = "All"
-if 'sort_by' not in st.session_state:
-    st.session_state.sort_by = "Priority"
-if 'active_tab' not in st.session_state:
-    st.session_state.active_tab = "failures"
+APP_VERSION = "2.1.0"  # Enhanced with AI features
 
 # -----------------------------------------------------------
 # HELPERS
@@ -77,343 +88,96 @@ def shorten_project_cache_path(path):
         return path.split(marker, 1)[1]
     return path.replace("/", "\\").split("\\")[-1]
 
-def get_browser_emoji(browser):
-    """Get emoji for browser type"""
-    emoji_map = {
-        'Chrome': '🌐',
-        'Firefox': '🦊',
-        'Safari': '🧭',
-        'Edge': '🔷',
-        'Unknown': '❓'
-    }
-    return emoji_map.get(browser, '🌐')
+def render_summary_card(xml_name, new_count, existing_count, total_count):
+    """Render a summary card for each XML file"""
+    status_color = "🟢" if new_count == 0 else "🔴"
+    
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Status", status_color)
+    with col2:
+        st.metric("New Failures", new_count, delta=None if new_count == 0 else f"+{new_count}", delta_color="inverse")
+    with col3:
+        st.metric("Existing Failures", existing_count)
+    with col4:
+        st.metric("Total Failures", total_count)
 
-def assign_priority(error_message, details):
-    """AI-like priority assignment based on error patterns"""
-    error_lower = error_message.lower()
-    details_lower = details.lower()
+def render_comparison_chart(all_results):
+    """Create a comparison chart across all uploaded XMLs"""
+    if not all_results:
+        return
     
-    # High priority patterns
-    high_patterns = ['exception', 'timeout', 'connection refused', 'null pointer', 'fatal']
-    # Medium priority patterns
-    medium_patterns = ['element not found', 'assertion failed', 'interaction failed']
-    # Low priority patterns
-    low_patterns = ['warning', 'deprecated', 'minor']
-    
-    for pattern in high_patterns:
-        if pattern in error_lower or pattern in details_lower:
-            return 'High'
-    
-    for pattern in medium_patterns:
-        if pattern in error_lower or pattern in details_lower:
-            return 'Medium'
-    
-    for pattern in low_patterns:
-        if pattern in error_lower or pattern in details_lower:
-            return 'Low'
-    
-    return 'Medium'  # Default
-
-def calculate_analytics(all_results):
-    """Calculate dashboard analytics"""
-    total_failures = sum(r['total_count'] for r in all_results)
-    new_failures = sum(r['new_count'] for r in all_results)
-    
-    # Count flaky tests (failures with multiple occurrences)
-    flaky_count = 0
-    all_failures = []
+    df_data = []
     for result in all_results:
-        all_failures.extend(result['new_failures'])
+        df_data.append({
+            'File': result['filename'][:30] + '...' if len(result['filename']) > 30 else result['filename'],
+            'New Failures': result['new_count'],
+            'Existing Failures': result['existing_count'],
+            'Total': result['total_count']
+        })
     
-    # Detect duplicates as flaky
-    test_counts = {}
-    for f in all_failures:
-        test_name = f['testcase']
-        test_counts[test_name] = test_counts.get(test_name, 0) + 1
-    flaky_count = sum(1 for count in test_counts.values() if count > 1)
+    df = pd.DataFrame(df_data)
     
-    # Calculate success rate (mock calculation)
-    total_tests = total_failures * 2  # Assume 50% failure rate for demo
-    success_rate = round((total_tests - total_failures) / max(total_tests, 1) * 100, 1)
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        name='New Failures',
+        x=df['File'],
+        y=df['New Failures'],
+        marker_color='#FF4B4B'
+    ))
+    fig.add_trace(go.Bar(
+        name='Existing Failures',
+        x=df['File'],
+        y=df['Existing Failures'],
+        marker_color='#FFA500'
+    ))
     
-    return {
-        'total_failures': total_failures,
-        'new_failures': new_failures,
-        'flaky_tests': flaky_count,
-        'avg_duration': '8.3s',  # Mock data
-        'success_rate': success_rate,
-        'trend_up': new_failures > 0
-    }
-
-def filter_and_sort_failures(failures, search_term, browser_filter, priority_filter, sort_by):
-    """Filter and sort failures based on user preferences"""
-    filtered = []
+    fig.update_layout(
+        title='Failure Comparison Across All Reports',
+        xaxis_title='XML Files',
+        yaxis_title='Number of Failures',
+        barmode='stack',
+        height=400,
+        hovermode='x unified'
+    )
     
-    for f in failures:
-        # Assign priority if not present
-        if 'priority' not in f:
-            f['priority'] = assign_priority(f['error'], f['details'])
-        
-        # Search filter
-        if search_term:
-            search_lower = search_term.lower()
-            if not (search_lower in f['testcase'].lower() or 
-                   search_lower in f['error'].lower()):
-                continue
-        
-        # Browser filter
-        if browser_filter != "All" and f['webBrowserType'] != browser_filter:
-            continue
-        
-        # Priority filter
-        if priority_filter != "All" and f.get('priority', 'Medium') != priority_filter:
-            continue
-        
-        filtered.append(f)
-    
-    # Sort
-    if sort_by == "Priority":
-        priority_order = {'High': 0, 'Medium': 1, 'Low': 2}
-        filtered.sort(key=lambda x: priority_order.get(x.get('priority', 'Medium'), 1))
-    elif sort_by == "Time":
-        # Mock time sorting (newest first)
-        filtered.reverse()
-    elif sort_by == "Name":
-        filtered.sort(key=lambda x: x['testcase'])
-    
-    return filtered
+    st.plotly_chart(fig, use_container_width=True)
 
 # -----------------------------------------------------------
 # PAGE CONFIGURATION
 # -----------------------------------------------------------
-st.set_page_config(
-    page_title="Provar AI - Enhanced Analyzer",
-    layout="wide",
-    page_icon="🚀",
-    initial_sidebar_state="expanded"
-)
+st.set_page_config("Provar AI - Enhanced XML Analyzer", layout="wide", page_icon="🚀")
 
-# -----------------------------------------------------------
-# MODERN DARK MODE CSS
-# -----------------------------------------------------------
-if st.session_state.dark_mode:
-    st.markdown("""
+# Custom CSS for better UI
+st.markdown("""
     <style>
-        /* Dark Mode Styles */
-        .stApp {
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-            color: #e0e0e0;
-        }
-        
-        .main-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 2rem;
-            border-radius: 15px;
-            text-align: center;
-            color: white;
-            margin-bottom: 2rem;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-        }
-        
-        .metric-card {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-            transition: transform 0.3s ease;
-        }
-        
-        .metric-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-        }
-        
-        .failure-card {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-bottom: 1rem;
-            transition: all 0.3s ease;
-        }
-        
-        .failure-card:hover {
-            background: rgba(255, 255, 255, 0.08);
-            border-color: rgba(102, 126, 234, 0.5);
-            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.2);
-        }
-        
-        .priority-high {
-            background: rgba(239, 68, 68, 0.2);
-            color: #fca5a5;
-            border: 1px solid #ef4444;
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.875rem;
-            font-weight: 600;
-        }
-        
-        .priority-medium {
-            background: rgba(251, 191, 36, 0.2);
-            color: #fcd34d;
-            border: 1px solid #f59e0b;
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.875rem;
-            font-weight: 600;
-        }
-        
-        .priority-low {
-            background: rgba(59, 130, 246, 0.2);
-            color: #93c5fd;
-            border: 1px solid #3b82f6;
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.875rem;
-            font-weight: 600;
-        }
-        
-        .search-container {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-        
-        div[data-testid="stExpander"] {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-        }
-        
-        .stTabs [data-baseweb="tab-list"] {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
-            padding: 0.5rem;
-        }
-        
-        .stTabs [data-baseweb="tab"] {
-            color: #a0a0a0;
-        }
-        
-        .stTabs [aria-selected="true"] {
-            color: #667eea !important;
-            background: rgba(102, 126, 234, 0.2);
-            border-radius: 8px;
-        }
+    .main-header {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #1f77b4;
+        text-align: center;
+        padding: 1rem 0;
+    }
+    .section-divider {
+        border-top: 2px solid #e0e0e0;
+        margin: 2rem 0;
+    }
+    .stExpander {
+        border: 1px solid #e0e0e0;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+    }
+    .ai-feature-box {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 1rem;
+        border-radius: 10px;
+        color: white;
+        margin: 1rem 0;
+    }
     </style>
-    """, unsafe_allow_html=True)
-else:
-    st.markdown("""
-    <style>
-        /* Light Mode Styles */
-        .stApp {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 100%);
-            background-size: 400% 400%;
-        }
-        
-        .main-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 2rem;
-            border-radius: 15px;
-            text-align: center;
-            color: white;
-            margin-bottom: 2rem;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-        }
-        
-        .metric-card {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease;
-        }
-        
-        .metric-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-        }
-        
-        .failure-card {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-bottom: 1rem;
-            transition: all 0.3s ease;
-        }
-        
-        .failure-card:hover {
-            background: rgba(255, 255, 255, 0.95);
-            border-color: rgba(102, 126, 234, 0.5);
-            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
-        }
-        
-        .priority-high {
-            background: rgba(239, 68, 68, 0.15);
-            color: #dc2626;
-            border: 1px solid #ef4444;
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.875rem;
-            font-weight: 600;
-        }
-        
-        .priority-medium {
-            background: rgba(251, 191, 36, 0.15);
-            color: #d97706;
-            border: 1px solid #f59e0b;
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.875rem;
-            font-weight: 600;
-        }
-        
-        .priority-low {
-            background: rgba(59, 130, 246, 0.15);
-            color: #2563eb;
-            border: 1px solid #3b82f6;
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.875rem;
-            font-weight: 600;
-        }
-        
-        .search-container {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-    </style>
-    """, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
-# -----------------------------------------------------------
-# HEADER
-# -----------------------------------------------------------
-col1, col2 = st.columns([6, 1])
-with col1:
-    st.markdown("""
-    <div class="main-header">
-        <h1 style="margin: 0; font-size: 2.5rem;">🚀 Provar AI Analysis Platform</h1>
-        <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">Enhanced Test Report Dashboard with Modern UI</p>
-    </div>
-    """, unsafe_allow_html=True)
-with col2:
-    if st.button("🌙" if not st.session_state.dark_mode else "☀️", key="theme_toggle", help="Toggle Dark/Light Mode"):
-        st.session_state.dark_mode = not st.session_state.dark_mode
-        st.rerun()
+st.markdown('<div class="main-header">🤖 Provar AI Report Analysis and Baseline Tool</div>', unsafe_allow_html=True)
 
 # -----------------------------------------------------------
 # SIDEBAR CONFIGURATION
@@ -440,7 +204,8 @@ with st.sidebar:
     
     # Reset Button
     if st.button("🔄 Reset All", type="secondary", use_container_width=True, help="Clear all data and start fresh"):
-        for key in ['all_results', 'upload_stats', 'batch_analysis', 'expanded_failures']:
+        # Clear session state
+        for key in ['all_results', 'upload_stats', 'batch_analysis']:
             if key in st.session_state:
                 del st.session_state[key]
         st.success("✅ UI Reset! Ready for new uploads.")
@@ -481,6 +246,10 @@ uploaded_files = st.file_uploader(
 
 if uploaded_files:
     st.success(f"✅ {len(uploaded_files)} file(s) uploaded successfully!")
+    
+    # Initialize session state for results
+    if 'all_results' not in st.session_state:
+        st.session_state.all_results = []
     
     # -----------------------------------------------------------
     # GLOBAL ANALYSIS BUTTON
@@ -567,181 +336,198 @@ if uploaded_files:
     # -----------------------------------------------------------
     if st.session_state.all_results:
         
-        # Calculate analytics
-        analytics = calculate_analytics(st.session_state.all_results)
+        st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
         
         # -----------------------------------------------------------
-        # ANALYTICS DASHBOARD
-        # -----------------------------------------------------------
-        st.markdown("## 📊 Analytics Dashboard")
-        
-        col1, col2, col3, col4, col5, col6 = st.columns(6)
-        
-        with col1:
-            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            st.metric("Total Failures", analytics['total_failures'], 
-                     help="Total number of test failures across all reports")
-            st.markdown('</div>', unsafe_allow_html=True)
-        
-        with col2:
-            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            st.metric("New Issues", analytics['new_failures'],
-                     delta=f"+{analytics['new_failures']}" if analytics['new_failures'] > 0 else "0",
-                     delta_color="inverse",
-                     help="New failures not in baseline")
-            st.markdown('</div>', unsafe_allow_html=True)
-        
-        with col3:
-            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            st.metric("Flaky Tests", analytics['flaky_tests'],
-                     help="Tests that fail intermittently")
-            st.markdown('</div>', unsafe_allow_html=True)
-        
-        with col4:
-            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            st.metric("Avg Duration", analytics['avg_duration'],
-                     help="Average test execution time")
-            st.markdown('</div>', unsafe_allow_html=True)
-        
-        with col5:
-            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            st.metric("Success Rate", f"{analytics['success_rate']}%",
-                     help="Percentage of passing tests")
-            st.markdown('</div>', unsafe_allow_html=True)
-        
-        with col6:
-            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-            st.metric("Trend", "↑" if analytics['trend_up'] else "↓",
-                     help="Failure trend direction")
-            st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        # -----------------------------------------------------------
-        # BATCH PATTERN ANALYSIS
+        # 🆕 BATCH PATTERN ANALYSIS
         # -----------------------------------------------------------
         if 'batch_analysis' in st.session_state and st.session_state.batch_analysis:
+            st.markdown('<div class="ai-feature-box">', unsafe_allow_html=True)
             st.markdown("## 🧠 AI Batch Pattern Analysis")
-            with st.expander("View AI Analysis", expanded=True):
-                st.markdown(st.session_state.batch_analysis)
-        
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        # -----------------------------------------------------------
-        # TABS FOR DIFFERENT VIEWS
-        # -----------------------------------------------------------
-        tab1, tab2, tab3 = st.tabs(["🔍 Failures Analysis", "📈 Trends", "📊 Reports"])
-        
-        with tab1:
-            # -----------------------------------------------------------
-            # SEARCH AND FILTER SECTION
-            # -----------------------------------------------------------
-            st.markdown('<div class="search-container">', unsafe_allow_html=True)
-            
-            col1, col2, col3 = st.columns([2, 1, 1])
-            with col1:
-                search_term = st.text_input(
-                    "🔍 Search",
-                    value=st.session_state.search_term,
-                    placeholder="Search test cases or errors...",
-                    key="search_input"
-                )
-                st.session_state.search_term = search_term
-            
-            with col2:
-                # Get unique browsers from all failures
-                all_browsers = set()
-                for result in st.session_state.all_results:
-                    for f in result['new_failures'] + result['existing_failures']:
-                        all_browsers.add(f.get('webBrowserType', 'Unknown'))
-                
-                browser_filter = st.selectbox(
-                    "Browser",
-                    ["All"] + sorted(list(all_browsers)),
-                    index=0,
-                    key="browser_filter"
-                )
-                st.session_state.selected_browser = browser_filter
-            
-            with col3:
-                priority_filter = st.selectbox(
-                    "Priority",
-                    ["All", "High", "Medium", "Low"],
-                    index=0,
-                    key="priority_filter"
-                )
-                st.session_state.selected_priority = priority_filter
-            
-            # Sort options
-            st.markdown("**Sort by:**")
-            col1, col2, col3, col4 = st.columns([1, 1, 1, 3])
-            with col1:
-                if st.button("🎯 Priority", key="sort_priority"):
-                    st.session_state.sort_by = "Priority"
-            with col2:
-                if st.button("⏰ Time", key="sort_time"):
-                    st.session_state.sort_by = "Time"
-            with col3:
-                if st.button("📝 Name", key="sort_name"):
-                    st.session_state.sort_by = "Name"
-            
+            st.markdown("AI has analyzed all failures together to identify patterns and priorities.")
             st.markdown('</div>', unsafe_allow_html=True)
             
-            # -----------------------------------------------------------
-            # DISPLAY FILTERED FAILURES
-            # -----------------------------------------------------------
-            st.markdown("### 🔴 Test Failures")
-            
-            # Collect all failures for display
-            all_failures_display = []
-            for result in st.session_state.all_results:
-                for f in result['new_failures']:
-                    f['status'] = 'New'
-                    f['filename'] = result['filename']
-                    all_failures_display.append(f)
-            
-            # Apply filters
-            filtered_failures = filter_and_sort_failures(
-                all_failures_display,
-                st.session_state.search_term,
-                st.session_state.selected_browser,
-                st.session_state.selected_priority,
-                st.session_state.sort_by
-            )
-            
-            st.caption(f"Showing {len(filtered_failures)} of {len(all_failures_display)} failures")
-            
-            # Display failures
-            for idx, failure in enumerate(filtered_failures):
-                failure_id = f"{failure['filename']}_{failure['testcase']}"
+            st.markdown(st.session_state.batch_analysis)
+            st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
+        
+        st.markdown("## 📊 Overall Summary")
+        
+        # Overall statistics
+        total_new = sum(r['new_count'] for r in st.session_state.all_results)
+        total_existing = sum(r['existing_count'] for r in st.session_state.all_results)
+        total_all = sum(r['total_count'] for r in st.session_state.all_results)
+        
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("📄 Total Files", len(st.session_state.all_results))
+        with col2:
+            st.metric("🆕 Total New Failures", total_new, delta=f"+{total_new}" if total_new > 0 else "0", delta_color="inverse")
+        with col3:
+            st.metric("♻️ Total Existing Failures", total_existing)
+        with col4:
+            st.metric("📈 Total All Failures", total_all)
+        
+        # Comparison chart
+        render_comparison_chart(st.session_state.all_results)
+        
+        st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
+        st.markdown("## 📋 Detailed Results by File")
+        
+        # Individual file results
+        for idx, result in enumerate(st.session_state.all_results):
+            with st.expander(f"📄 {result['filename']} - Project: {result['project']}", expanded=False):
                 
-                with st.container():
-                    st.markdown('<div class="failure-card">', unsafe_allow_html=True)
+                # Summary card for this file
+                render_summary_card(
+                    result['filename'],
+                    result['new_count'],
+                    result['existing_count'],
+                    result['total_count']
+                )
+                
+                st.markdown("---")
+                
+                # Tabs for different failure types
+                tab1, tab2, tab3 = st.tabs(["🆕 New Failures", "♻️ Existing Failures", "⚙️ Actions"])
+                
+                with tab1:
+                    if result['new_count'] == 0:
+                        st.success("✅ No new failures detected!")
+                    else:
+                        for i, f in enumerate(result['new_failures']):
+                            with st.container():
+                                st.markdown(f"**{i+1}. {f['testcase']}**")
+                                col1, col2 = st.columns([1, 3])
+                                with col1:
+                                    st.write("**Browser:**", f['webBrowserType'])
+                                    st.write("**Path:**", f['testcase_path'][:50] + "..." if len(f['testcase_path']) > 50 else f['testcase_path'])
+                                with col2:
+                                    st.error(f"**Error:** {f['error']}")
+                                    with st.expander("View Details"):
+                                        st.code(f['details'], language="text")
+                                
+                                # AI Features
+                                if use_ai:
+                                    ai_tabs = []
+                                    if True:  # Basic analysis always available
+                                        ai_tabs.append("🤖 AI Analysis")
+                                    if enable_jira_generation:
+                                        ai_tabs.append("📝 Jira Ticket")
+                                    if enable_test_improvements:
+                                        ai_tabs.append("💡 Improvements")
+                                    
+                                    if len(ai_tabs) > 0:
+                                        ai_tab_objects = st.tabs(ai_tabs)
+                                        
+                                        # Basic AI Analysis
+                                        with ai_tab_objects[0]:
+                                            with st.spinner("Analyzing..."):
+                                                ai_analysis = generate_ai_summary(f['testcase'], f['error'], f['details'])
+                                                st.info(ai_analysis)
+                                        
+                                        # Jira Ticket Generation
+                                        if enable_jira_generation and len(ai_tab_objects) > 1:
+                                            with ai_tab_objects[1]:
+                                                with st.spinner("Generating Jira ticket..."):
+                                                    jira_content = generate_jira_ticket(
+                                                        f['testcase'], 
+                                                        f['error'], 
+                                                        f['details'],
+                                                        ai_analysis if 'ai_analysis' in locals() else ""
+                                                    )
+                                                    st.markdown(jira_content)
+                                                    st.download_button(
+                                                        "📥 Download Jira Content",
+                                                        jira_content,
+                                                        file_name=f"jira_{f['testcase'][:30]}.txt",
+                                                        key=f"jira_{idx}_{i}"
+                                                    )
+                                        
+                                        # Test Improvements
+                                        if enable_test_improvements and len(ai_tab_objects) > 2:
+                                            with ai_tab_objects[-1]:
+                                                with st.spinner("Generating improvement suggestions..."):
+                                                    improvements = suggest_test_improvements(
+                                                        f['testcase'],
+                                                        f['error'],
+                                                        f['details']
+                                                    )
+                                                    st.success(improvements)
+                                
+                                st.markdown("---")
+                
+                with tab2:
+                    if result['existing_count'] == 0:
+                        st.info("ℹ️ No existing failures found in baseline")
+                    else:
+                        st.warning(f"Found {result['existing_count']} known failures")
+                        for i, f in enumerate(result['existing_failures']):
+                            with st.expander(f"{i+1}. {f['testcase']}"):
+                                st.write("**Error:**", f['error'])
+                                st.write("**Browser:**", f['webBrowserType'])
+                
+                with tab3:
+                    st.markdown("### 🛠️ Baseline Management")
                     
-                    # Header row
-                    col1, col2 = st.columns([4, 1])
+                    col1, col2 = st.columns(2)
                     with col1:
-                        browser_emoji = get_browser_emoji(failure['webBrowserType'])
-                        priority = failure.get('priority', 'Medium')
-                        priority_class = f"priority-{priority.lower()}"
-                        
-                        st.markdown(f"""
-                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                            <span style="font-size: 1.5rem;">{browser_emoji}</span>
-                            <h3 style="margin: 0; font-size: 1.1rem;">{failure['testcase']}</h3>
-                            <span class="{priority_class}">{priority} Priority</span>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        
-                        st.error(f"❌ {failure['error']}")
-                        
-                        # Metadata
-                        st.caption(f"🌐 {failure['webBrowserType']} | 📄 {failure['filename']}")
+                        if st.button(f"💾 Save as Baseline", key=f"save_{idx}"):
+                            if not admin_key:
+                                st.error("❌ Admin key required!")
+                            else:
+                                try:
+                                    all_failures = result['new_failures'] + result['existing_failures']
+                                    save_baseline(result['project'], all_failures, admin_key)
+                                    st.success("✅ Baseline saved successfully!")
+                                except Exception as e:
+                                    st.error(f"❌ Error: {str(e)}")
                     
                     with col2:
-                        # Copy button
-                        if st.button("📋 Copy", key=f"copy_{idx}"):
-                            st.code(failure['testcase'])
-                            st.success("✅ Copied!", icon="✅")
+                        if result['baseline_exists']:
+                            st.success("✅ Baseline exists for this project")
+                        else:
+                            st.warning("⚠️ No baseline found")
                     
-                    # Expandable
+                    # Export options
+                    st.markdown("### 📤 Export Options")
+                    export_data = pd.DataFrame(result['new_failures'] + result['existing_failures'])
+                    
+                    if not export_data.empty:
+                        csv = export_data.to_csv(index=False)
+                        st.download_button(
+                            label="📥 Download as CSV",
+                            data=csv,
+                            file_name=f"{result['filename']}_failures.csv",
+                            mime="text/csv",
+                            key=f"export_{idx}"
+                        )
+
+else:
+    # Welcome message when no files uploaded
+    st.info("👆 Upload one or more XML files to begin AI-powered analysis")
+    
+    st.markdown("### 🎯 Features")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("**📊 Multi-File Analysis**")
+        st.write("Upload and analyze multiple XML reports simultaneously")
+    with col2:
+        st.markdown("**🤖 AI-Powered Insights**")
+        st.write("Get intelligent failure analysis with Groq (FREE)")
+    with col3:
+        st.markdown("**📈 Baseline Tracking**")
+        st.write("Compare results against historical baselines")
+    
+    st.markdown("---")
+    
+    st.markdown("### 🆕 New AI Features")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("**🧠 Batch Pattern Analysis**")
+        st.write("AI identifies common patterns across all failures")
+    with col2:
+        st.markdown("**📝 Jira Auto-Generation**")
+        st.write("Create ready-to-use Jira tickets instantly")
+    with col3:
+        st.markdown("**💡 Test Improvements**")
+        st.write("Get suggestions to make tests more stable")
