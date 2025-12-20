@@ -363,8 +363,7 @@ if uploaded_files:
                         st.success("✅ No new failures detected!")
                     else:
                         for i, f in enumerate(result['new_failures']):
-                            with st.container():
-                                st.markdown(f"**{i+1}. {f['testcase']}**")
+                            with st.expander(f"🆕 {i+1}. {f['testcase']}", expanded=False):
                                 col1, col2 = st.columns([1, 3])
                                 with col1:
                                  st.write("**Browser:**", f['webBrowserType'])
@@ -432,8 +431,8 @@ if uploaded_files:
                     else:
                         st.warning(f"Found {result['existing_count']} known failures")
                         for i, f in enumerate(result['existing_failures']):
-                            st.markdown(f"**{i+1}. {f['testcase']}**")
-                            col1, col2 = st.columns([1, 3])
+                            with st.expander(f"♻️ {i+1}. {f['testcase']}", expanded=False):
+                             col1, col2 = st.columns([1, 3])
                             with col1:
                                  st.write("**Browser:**", f['webBrowserType'])
                                  st.markdown("**Path:**")
