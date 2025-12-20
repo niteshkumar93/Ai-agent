@@ -117,14 +117,6 @@ def render_comparison_chart(all_results):
 # -----------------------------------------------------------
 st.set_page_config("Provar AI - Enhanced XML Analyzer", layout="wide", page_icon="🚀")
 
-st.markdown("""<style>
-.stApp{background:linear-gradient(135deg,#667eea,#764ba2,#f093fb,#4facfe,#00f2fe);background-size:400% 400%;animation:g 15s ease infinite}
-@keyframes g{0%,100%{background-position:0 50%}50%{background-position:100% 50%}}
-.element-container,.stMarkdown{background:rgba(255,255,255,.15)!important;backdrop-filter:blur(20px) saturate(180%)!important;border:1px solid rgba(255,255,255,.3)!important;border-radius:20px!important;padding:15px!important}
-section[data-testid="stSidebar"]{background:rgba(255,255,255,.1)!important;backdrop-filter:blur(40px)!important}
-.stButton>button{background:rgba(255,255,255,.2)!important;backdrop-filter:blur(20px)!important;border:1px solid rgba(255,255,255,.3)!important;border-radius:15px!important;color:white!important}
-h1,h2,h3{color:white!important}
-</style>""", unsafe_allow_html=True)
 
 # iOS Glassmorphism Design
 st.markdown("""
