@@ -364,20 +364,23 @@ if uploaded_files:
                     else:
                         for i, f in enumerate(result['new_failures']):
                             with st.expander(f"🆕 {i+1}. {f['testcase']}", expanded=False):
-                                col1, col2 = st.columns([1, 3])
-                                with col1:
                                  st.write("**Browser:**", f['webBrowserType'])
+
+                            # Path (full width, readable)
                                  st.markdown("**Path:**")
                                  st.code(f['testcase_path'], language="text")
-                                with col2:
-                                 # Error details
+
+                                 # Error summary
                                  st.error(f"Error: {f['error']}")
-                                 st.markdown("**Error Details (click copy icon ⤴️):**")
+
+                             # Error details (copyable)
+                                 st.markdown("**Error Details (click copy icon):**")
                                  st.code(f['details'], language="text")
+
 
                                 
                                 # AI Features
-                                if use_ai:
+                                 if use_ai:
                                     ai_tabs = []
                                     if True:  # Basic analysis always available
                                         ai_tabs.append("🤖 AI Analysis")
@@ -424,7 +427,7 @@ if uploaded_files:
                                                     )
                                                     st.success(improvements)
                                 
-                                st.markdown("---")
+                                 st.markdown("---")
                 
                 with tab2:
                     if result['existing_count'] == 0:
