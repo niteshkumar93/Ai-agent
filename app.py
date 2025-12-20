@@ -124,10 +124,76 @@ st.set_page_config("Provar AI - Enhanced XML Analyzer", layout="wide", page_icon
 
 # Custom CSS for better UI
 st.markdown("""
-<style>
-div.element-container {
+            div.element-container {
     margin-bottom: 0.4rem;
 }
+
+<style>
+
+/* ---------- GLOBAL TEXT ---------- */
+html, body, [class*="css"] {
+    font-family: "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+/* ---------- MAIN HEADER ---------- */
+.main-header {
+    font-size: 2rem;
+    font-weight: 600;
+    text-align: center;
+    color: #1f2937;
+    margin-bottom: 0.5rem;
+}
+
+/* ---------- SECTION TITLES ---------- */
+.section-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    color: #111827;
+}
+
+/* ---------- SUMMARY CARDS ---------- */
+.summary-card {
+    background: #ffffff;
+    border-radius: 10px;
+    padding: 0.8rem 1rem;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    text-align: center;
+}
+
+.summary-card h4 {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #6b7280;
+    margin-bottom: 0.2rem;
+}
+
+.summary-card h2 {
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: #111827;
+    margin: 0;
+}
+
+/* ---------- METRIC FIX ---------- */
+div[data-testid="metric-container"] {
+    padding: 0.6rem !important;
+    border-radius: 10px;
+}
+
+/* ---------- REDUCE GAP BETWEEN SECTIONS ---------- */
+.block-container {
+    padding-top: 1.5rem;
+}
+
+/* ---------- EXPANDER ---------- */
+.stExpander {
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+}
+
 </style>
 """, unsafe_allow_html=True)
 # -----------------------------------------------------------
