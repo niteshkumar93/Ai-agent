@@ -367,12 +367,14 @@ if uploaded_files:
                                 st.markdown(f"**{i+1}. {f['testcase']}**")
                                 col1, col2 = st.columns([1, 3])
                                 with col1:
-                                    st.write("**Browser:**", f['webBrowserType'])
-                                    st.write("**Path:**", f['testcase_path'][:50] + "..." if len(f['testcase_path']) > 50 else f['testcase_path'])
+                                 st.write("**Browser:**", f['webBrowserType'])
+                                 st.markdown("**Path:**")
+                                 st.code(f['testcase_path'], language="text")
                                 with col2:
-                                    st.error(f"**Error:** {f['error']}")
-                                    with st.expander("View Details"):
-                                        st.code(f['details'], language="text")
+                                 st.error(f"Error: {f['error']}")
+                                 st.markdown("**Error Details:**")
+                                 st.code(f['details'], language="text")
+
                                 
                                 # AI Features
                                 if use_ai:
