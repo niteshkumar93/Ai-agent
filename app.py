@@ -57,18 +57,24 @@ def shorten_project_cache_path(path):
     return path.replace("/", "\\").split("\\")[-1]
 
 def render_summary_card(xml_name, new_count, existing_count, total_count):
-    """Render a summary card for each XML file"""
-    status_color = "🟢" if new_count == 0 else "🔴"
-    
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
+
     with col1:
-        st.metric("Status", status_color)
+        st.markdown("**Status**")
+        st.write("🟢 Pass" if new_count == 0 else "🔴 Fail")
+
     with col2:
-        st.metric("New Failures", new_count, delta=None if new_count == 0 else f"+{new_count}", delta_color="inverse")
+        st.markdown("**New**")
+        st.write(new_count)
+
     with col3:
-        st.metric("Existing Failures", existing_count)
+        st.markdown("**Existing**")
+        st.write(existing_count)
+
     with col4:
-        st.metric("Total Failures", total_count)
+        st.markdown("**Total**")
+        st.write(total_count)
+
 
 def render_comparison_chart(all_results):
     """Create a comparison chart across all uploaded XMLs"""
@@ -118,33 +124,80 @@ st.set_page_config("Provar AI - Enhanced XML Analyzer", layout="wide", page_icon
 
 # Custom CSS for better UI
 st.markdown("""
-    <style>
-    .main-header {
-        font-size: 2.5rem;
-        font-weight: bold;
-        color: #1f77b4;
-        text-align: center;
-        padding: 1rem 0;
-    }
-    .section-divider {
-        border-top: 2px solid #e0e0e0;
-        margin: 2rem 0;
-    }
-    .stExpander {
-        border: 1px solid #e0e0e0;
-        border-radius: 10px;
-        margin-bottom: 1rem;
-    }
-    .ai-feature-box {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 1rem;
-        border-radius: 10px;
-        color: white;
-        margin: 1rem 0;
-    }
-    </style>
-""", unsafe_allow_html=True)
+            div.element-container {
+    margin-bottom: 0.4rem;
+}
 
+<style>
+
+/* ---------- GLOBAL TEXT ---------- */
+html, body, [class*="css"] {
+    font-family: "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+/* ---------- MAIN HEADER ---------- */
+.main-header {
+    font-size: 2rem;
+    font-weight: 600;
+    text-align: center;
+    color: #1f2937;
+    margin-bottom: 0.5rem;
+}
+
+/* ---------- SECTION TITLES ---------- */
+.section-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    color: #111827;
+}
+
+/* ---------- SUMMARY CARDS ---------- */
+.summary-card {
+    background: #ffffff;
+    border-radius: 10px;
+    padding: 0.8rem 1rem;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    text-align: center;
+}
+
+.summary-card h4 {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #6b7280;
+    margin-bottom: 0.2rem;
+}
+
+.summary-card h2 {
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: #111827;
+    margin: 0;
+}
+
+/* ---------- METRIC FIX ---------- */
+div[data-testid="metric-container"] {
+    padding: 0.6rem !important;
+    border-radius: 10px;
+}
+
+/* ---------- REDUCE GAP BETWEEN SECTIONS ---------- */
+.block-container {
+    padding-top: 1.5rem;
+}
+
+/* ---------- EXPANDER ---------- */
+.stExpander {
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+}
+
+</style>
+""", unsafe_allow_html=True)
+# -----------------------------------------------------------
+# MAIN HEADER
 st.markdown('<div class="main-header">🤖 Provar AI Report Analysis and Baseline Tool</div>', unsafe_allow_html=True)
 
 # -----------------------------------------------------------
@@ -317,32 +370,93 @@ if uploaded_files:
             
             st.markdown(st.session_state.batch_analysis)
             st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
-        
-        st.markdown("## 📊 Overall Summary")
-        
-        # Overall statistics
-        total_new = sum(r['new_count'] for r in st.session_state.all_results)
-        total_existing = sum(r['existing_count'] for r in st.session_state.all_results)
-        total_all = sum(r['total_count'] for r in st.session_state.all_results)
-        
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.metric("📄 Total Files", len(st.session_state.all_results))
-        with col2:
-            st.metric("🆕 Total New Failures", total_new, delta=f"+{total_new}" if total_new > 0 else "0", delta_color="inverse")
-        with col3:
-            st.metric("♻️ Total Existing Failures", total_existing)
-        with col4:
-            st.metric("📈 Total All Failures", total_all)
+        if st.session_state.all_results:
+        # Summary Metrics
+         st.markdown('<div class="section-title">📊 Overall Summary</div>', unsafe_allow_html=True)
+
+total_new = sum(r['new_count'] for r in st.session_state.all_results)
+total_existing = sum(r['existing_count'] for r in st.session_state.all_results)
+total_all = sum(r['total_count'] for r in st.session_state.all_results)
+
+c1, c2, c3, c4 = st.columns(4)
+
+with c1:
+    st.markdown(f"""
+    <div class="summary-card">
+        <h4>Total Files</h4>
+        <h2>{len(st.session_state.all_results)}</h2>
+    </div>
+    """, unsafe_allow_html=True)
+
+with c2:
+    st.markdown(f"""
+    <div class="summary-card">
+        <h4>New Failures</h4>
+        <h2 style="color:#dc2626">{total_new}</h2>
+    </div>
+    """, unsafe_allow_html=True)
+
+with c3:
+    st.markdown(f"""
+    <div class="summary-card">
+        <h4>Existing Failures</h4>
+        <h2 style="color:#ca8a04">{total_existing}</h2>
+    </div>
+    """, unsafe_allow_html=True)
+
+with c4:
+    st.markdown(f"""
+    <div class="summary-card">
+        <h4>Total Failures</h4>
+        <h2>{total_all}</h2>
+    </div>
+    """, unsafe_allow_html=True)
+
+st.markdown('<div class="section-title">📊 Overall Summary</div>', unsafe_allow_html=True)
+
+c1, c2, c3, c4 = st.columns(4)
+
+with c1:
+    st.markdown(f"""
+    <div class="summary-card">
+        <h4>Total Files</h4>
+        <h2>{len(st.session_state.all_results)}</h2>
+    </div>
+    """, unsafe_allow_html=True)
+
+with c2:
+    st.markdown(f"""
+    <div class="summary-card">
+        <h4>New Failures</h4>
+        <h2 style="color:#dc2626">{total_new}</h2>
+    </div>
+    """, unsafe_allow_html=True)
+
+with c3:
+    st.markdown(f"""
+    <div class="summary-card">
+        <h4>Existing Failures</h4>
+        <h2 style="color:#ca8a04">{total_existing}</h2>
+    </div>
+    """, unsafe_allow_html=True)
+
+with c4:
+    st.markdown(f"""
+    <div class="summary-card">
+        <h4>Total Failures</h4>
+        <h2>{total_all}</h2>
+    </div>
+    """, unsafe_allow_html=True)
+
         
         # Comparison chart
-        render_comparison_chart(st.session_state.all_results)
+    render_comparison_chart(st.session_state.all_results)
         
-        st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
-        st.markdown("## 📋 Detailed Results by File")
+    st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
+    st.markdown("## 📋 Detailed Results by File")
         
         # Individual file results
-        for idx, result in enumerate(st.session_state.all_results):
+    for idx, result in enumerate(st.session_state.all_results):
             with st.expander(f"📄 {result['filename']} - Project: {result['project']}", expanded=False):
                 
                 # Summary card for this file
@@ -353,7 +467,6 @@ if uploaded_files:
                     result['total_count']
                 )
                 
-                st.markdown("---")
                 
                 # Tabs for different failure types
                 tab1, tab2, tab3 = st.tabs(["🆕 New Failures", "♻️ Existing Failures", "⚙️ Actions"])
@@ -470,10 +583,10 @@ if uploaded_files:
                             key=f"export_{idx}"
                         )
 
-else:
+    else:
     # Welcome message when no files uploaded
-    st.info("👆 Upload one or more XML files to begin AI-powered analysis")
-    
+         st.info("👆 Upload one or more XML files to begin AI-powered analysis")
+     
     st.markdown("### 🎯 Features")
     col1, col2, col3 = st.columns(3)
     with col1:
