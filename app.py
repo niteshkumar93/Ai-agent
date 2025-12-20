@@ -5,7 +5,13 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import io
 import os
-
+from datetime import datetime
+def format_execution_time(raw_time: str):
+    try:
+        dt = datetime.strptime(raw_time, "%a %b %d %H:%M:%S %Z %Y")
+        return dt.strftime("%d %b %Y, %H:%M UTC")
+    except Exception:
+        return raw_time
 from xml_extractor import extract_failed_tests
 from ai_reasoner import (
     generate_ai_summary, 
@@ -263,6 +269,7 @@ if uploaded_files:
                     new_f, existing_f = normalized, []
                 
                 # Store results
+                execution_time = failures[0].get("timestamp", "Unknown")
                 st.session_state.all_results.append({
                     'filename': xml_file.name,
                     'project': detected_project,
@@ -343,7 +350,13 @@ if uploaded_files:
         
         # Individual file results
         for idx, result in enumerate(st.session_state.all_results):
-            with st.expander(f"📄 {result['filename']} - Project: {result['project']}", expanded=False):
+            formatted_time = format_execution_time(result.get("execution_time", "Unknown"))
+
+            with st.expander(
+                 f"📄 {result['filename']} | {formatted_time} – Project: {result['project']}",
+                expanded=False
+):
+
                 
                 # Summary card for this file
                 render_summary_card(
