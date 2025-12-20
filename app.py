@@ -124,76 +124,10 @@ st.set_page_config("Provar AI - Enhanced XML Analyzer", layout="wide", page_icon
 
 # Custom CSS for better UI
 st.markdown("""
-            div.element-container {
+<style>
+div.element-container {
     margin-bottom: 0.4rem;
 }
-
-<style>
-
-/* ---------- GLOBAL TEXT ---------- */
-html, body, [class*="css"] {
-    font-family: "Segoe UI", Roboto, Arial, sans-serif;
-}
-
-/* ---------- MAIN HEADER ---------- */
-.main-header {
-    font-size: 2rem;
-    font-weight: 600;
-    text-align: center;
-    color: #1f2937;
-    margin-bottom: 0.5rem;
-}
-
-/* ---------- SECTION TITLES ---------- */
-.section-title {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin-top: 1rem;
-    margin-bottom: 0.5rem;
-    color: #111827;
-}
-
-/* ---------- SUMMARY CARDS ---------- */
-.summary-card {
-    background: #ffffff;
-    border-radius: 10px;
-    padding: 0.8rem 1rem;
-    border: 1px solid #e5e7eb;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    text-align: center;
-}
-
-.summary-card h4 {
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: #6b7280;
-    margin-bottom: 0.2rem;
-}
-
-.summary-card h2 {
-    font-size: 1.6rem;
-    font-weight: 600;
-    color: #111827;
-    margin: 0;
-}
-
-/* ---------- METRIC FIX ---------- */
-div[data-testid="metric-container"] {
-    padding: 0.6rem !important;
-    border-radius: 10px;
-}
-
-/* ---------- REDUCE GAP BETWEEN SECTIONS ---------- */
-.block-container {
-    padding-top: 1.5rem;
-}
-
-/* ---------- EXPANDER ---------- */
-.stExpander {
-    border-radius: 8px;
-    border: 1px solid #e5e7eb;
-}
-
 </style>
 """, unsafe_allow_html=True)
 # -----------------------------------------------------------
@@ -353,102 +287,103 @@ if uploaded_files:
                     st.session_state.batch_analysis = generate_batch_analysis(all_failures)
     
     # -----------------------------------------------------------
-    # DISPLAY RESULTS
-    # -----------------------------------------------------------
-    if st.session_state.all_results:
-        
+     # -----------------------------------------------------------
+# DISPLAY RESULTS
+# -----------------------------------------------------------
+if st.session_state.all_results:
+
+    st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
+
+    # ------------------ AI BATCH ANALYSIS ------------------
+    if 'batch_analysis' in st.session_state and st.session_state.batch_analysis:
+        st.markdown('<div class="ai-feature-box">', unsafe_allow_html=True)
+        st.markdown("## 🧠 AI Batch Pattern Analysis")
+        st.markdown("AI has analyzed all failures together to identify patterns and priorities.")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        st.markdown(st.session_state.batch_analysis)
         st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
-        
-        # -----------------------------------------------------------
-        # 🆕 BATCH PATTERN ANALYSIS
-        # -----------------------------------------------------------
-        if 'batch_analysis' in st.session_state and st.session_state.batch_analysis:
-            st.markdown('<div class="ai-feature-box">', unsafe_allow_html=True)
-            st.markdown("## 🧠 AI Batch Pattern Analysis")
-            st.markdown("AI has analyzed all failures together to identify patterns and priorities.")
-            st.markdown('</div>', unsafe_allow_html=True)
-            
-            st.markdown(st.session_state.batch_analysis)
-            st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
-        if st.session_state.all_results:
-        # Summary Metrics
-         st.markdown('<div class="section-title">📊 Overall Summary</div>', unsafe_allow_html=True)
 
-total_new = sum(r['new_count'] for r in st.session_state.all_results)
-total_existing = sum(r['existing_count'] for r in st.session_state.all_results)
-total_all = sum(r['total_count'] for r in st.session_state.all_results)
+    # ------------------ OVERALL SUMMARY ------------------
+    st.markdown('<div class="section-title">📊 Overall Summary</div>', unsafe_allow_html=True)
 
-c1, c2, c3, c4 = st.columns(4)
+    total_new = sum(r['new_count'] for r in st.session_state.all_results)
+    total_existing = sum(r['existing_count'] for r in st.session_state.all_results)
+    total_all = sum(r['total_count'] for r in st.session_state.all_results)
 
-with c1:
-    st.markdown(f"""
-    <div class="summary-card">
-        <h4>Total Files</h4>
-        <h2>{len(st.session_state.all_results)}</h2>
-    </div>
-    """, unsafe_allow_html=True)
+    c1, c2, c3, c4 = st.columns(4)
 
-with c2:
-    st.markdown(f"""
-    <div class="summary-card">
-        <h4>New Failures</h4>
-        <h2 style="color:#dc2626">{total_new}</h2>
-    </div>
-    """, unsafe_allow_html=True)
+    with c1:
+        st.markdown(f"""
+        <div class="summary-card">
+            <h4>Total Files</h4>
+            <h2>{len(st.session_state.all_results)}</h2>
+        </div>
+        """, unsafe_allow_html=True)
 
-with c3:
-    st.markdown(f"""
-    <div class="summary-card">
-        <h4>Existing Failures</h4>
-        <h2 style="color:#ca8a04">{total_existing}</h2>
-    </div>
-    """, unsafe_allow_html=True)
+    with c2:
+        st.markdown(f"""
+        <div class="summary-card">
+            <h4>New Failures</h4>
+            <h2 style="color:#dc2626">{total_new}</h2>
+        </div>
+        """, unsafe_allow_html=True)
 
-with c4:
-    st.markdown(f"""
-    <div class="summary-card">
-        <h4>Total Failures</h4>
-        <h2>{total_all}</h2>
-    </div>
-    """, unsafe_allow_html=True)
+    with c3:
+        st.markdown(f"""
+        <div class="summary-card">
+            <h4>Existing Failures</h4>
+            <h2 style="color:#ca8a04">{total_existing}</h2>
+        </div>
+        """, unsafe_allow_html=True)
 
-st.markdown('<div class="section-title">📊 Overall Summary</div>', unsafe_allow_html=True)
+    with c4:
+        st.markdown(f"""
+        <div class="summary-card">
+            <h4>Total Failures</h4>
+            <h2>{total_all}</h2>
+        </div>
+        """, unsafe_allow_html=True)
 
-c1, c2, c3, c4 = st.columns(4)
+    # ------------------ COMPARISON CHART ------------------
+    render_comparison_chart(st.session_state.all_results)
 
-with c1:
-    st.markdown(f"""
-    <div class="summary-card">
-        <h4>Total Files</h4>
-        <h2>{len(st.session_state.all_results)}</h2>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
+    st.markdown("## 📋 Detailed Results by File")
 
-with c2:
-    st.markdown(f"""
-    <div class="summary-card">
-        <h4>New Failures</h4>
-        <h2 style="color:#dc2626">{total_new}</h2>
-    </div>
-    """, unsafe_allow_html=True)
+    # ------------------ FILE LEVEL DETAILS ------------------
+    for idx, result in enumerate(st.session_state.all_results):
+        with st.expander(f"📄 {result['filename']} - Project: {result['project']}", expanded=False):
 
-with c3:
-    st.markdown(f"""
-    <div class="summary-card">
-        <h4>Existing Failures</h4>
-        <h2 style="color:#ca8a04">{total_existing}</h2>
-    </div>
-    """, unsafe_allow_html=True)
+            render_summary_card(
+                result['filename'],
+                result['new_count'],
+                result['existing_count'],
+                result['total_count']
+            )
 
-with c4:
-    st.markdown(f"""
-    <div class="summary-card">
-        <h4>Total Failures</h4>
-        <h2>{total_all}</h2>
-    </div>
-    """, unsafe_allow_html=True)
+            tab1, tab2, tab3 = st.tabs(["🆕 New Failures", "♻️ Existing Failures", "⚙️ Actions"])
 
-        
+            with tab1:
+                if result['new_count'] == 0:
+                    st.success("✅ No new failures detected!")
+                else:
+                    for i, f in enumerate(result['new_failures']):
+                        st.markdown(f"**{i+1}. {f['testcase']}**")
+                        col1, col2 = st.columns([1, 3])
+                        with col1:
+                            st.write("**Browser:**", f['webBrowserType'])
+                            st.write("**Path:**", f['testcase_path'])
+                        with col2:
+                            st.error(f["error"])
+
+            with tab2:
+                if result['existing_count'] == 0:
+                    st.info("ℹ️ No existing failures found in baseline")
+
+            with tab3:
+                st.markdown("### 🛠️ Baseline Management")
+
         # Comparison chart
     render_comparison_chart(st.session_state.all_results)
         
