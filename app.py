@@ -155,7 +155,7 @@ with st.sidebar:
     
     # AI Settings
     st.subheader("🤖 AI Features")
-    use_ai = st.checkbox("Enable AI Analysis", value=True, help="Use Groq AI for intelligent failure analysis")
+    use_ai = st.checkbox("Enable AI Analysis", value=False, help="Use Groq AI for intelligent failure analysis")
     
     # Advanced AI Features
     with st.expander("🎯 Advanced AI Features"):
