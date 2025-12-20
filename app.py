@@ -114,18 +114,7 @@ def render_comparison_chart(all_results):
 # -----------------------------------------------------------
 # PAGE CONFIGURATION
 # -----------------------------------------------------------
-# Header with custom logo
-col1, col2, col3 = st.columns([1, 3, 1])
-with col2:
-    st.markdown("""
-        <div style="text-align: center; padding: 1rem 0;">
-            <img src="https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/assets/robot_logo.png" 
-                 style="width: 80px; height: 80px; margin-bottom: 1rem; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));">
-            <h1 style="color: white; margin: 0; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-                Provar AI Report Analysis and Baseline Tool
-            </h1>
-        </div>
-    """, unsafe_allow_html=True)
+st.set_page_config("Provar AI - Enhanced XML Analyzer", layout="wide", page_icon="🚀")
 
 # Custom CSS for better UI
 st.markdown("""
