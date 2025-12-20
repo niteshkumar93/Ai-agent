@@ -530,4 +530,4 @@ else:
         st.write("Create ready-to-use Jira tickets instantly")
     with col3:
         st.markdown("**💡 Test Improvements**")
-        st.write("Get suggestions to make tests more stable")
+        st.write("Get suggestions to make tests more stable") 
