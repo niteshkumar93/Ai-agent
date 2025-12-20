@@ -13,7 +13,7 @@ from pathlib import Path
 @st.cache_data
 def get_logo():
     try:
-        logo_path = Path("images/robot_logo.png")
+        logo_path = Path("images/RoboProvarAI.png")
         if logo_path.exists():
             return base64.b64encode(logo_path.read_bytes()).decode()
     except:
