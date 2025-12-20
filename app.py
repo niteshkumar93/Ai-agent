@@ -117,331 +117,36 @@ def render_comparison_chart(all_results):
 # -----------------------------------------------------------
 st.set_page_config("Provar AI - Enhanced XML Analyzer", layout="wide", page_icon="🚀")
 
-# Balanced Fresh Glass Design - Add this to your app.py
-# Replace your existing st.markdown CSS block with this
-
+# Custom CSS for better UI
 st.markdown("""
     <style>
-    /* Subtle gradient background - not too bright */
-    .stApp {
-        background: linear-gradient(135deg, 
-            #4158D0 0%,
-            #C850C0 46%,
-            #FFCC70 100%
-        );
-        background-size: 200% 200%;
-        animation: gradientShift 20s ease infinite;
-    }
-    
-    @keyframes gradientShift {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
-    }
-    
-    /* Balanced glass effect - perfect transparency */
-    .element-container, .stMarkdown, .stExpander, div[data-testid="stMetric"] {
-        background: rgba(255, 255, 255, 0.08) !important;
-        backdrop-filter: blur(12px) saturate(150%) !important;
-        -webkit-backdrop-filter: blur(12px) saturate(150%) !important;
-        border: 1px solid rgba(255, 255, 255, 0.18) !important;
-        border-radius: 16px !important;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
-        padding: 15px !important;
-        margin: 8px 0 !important;
-    }
-    
-    /* Sidebar - slightly more opaque for better readability */
-    section[data-testid="stSidebar"] {
-        background: rgba(255, 255, 255, 0.12) !important;
-        backdrop-filter: blur(20px) saturate(140%) !important;
-        -webkit-backdrop-filter: blur(20px) saturate(140%) !important;
-        border-right: 1px solid rgba(255, 255, 255, 0.2) !important;
-        box-shadow: 2px 0 12px rgba(0, 0, 0, 0.05) !important;
-    }
-    
-    section[data-testid="stSidebar"] > div {
-        background: transparent !important;
-    }
-    
-    /* Buttons - balanced opacity */
-    .stButton > button {
-        background: rgba(255, 255, 255, 0.12) !important;
-        backdrop-filter: blur(15px) !important;
-        border: 1px solid rgba(255, 255, 255, 0.25) !important;
-        border-radius: 12px !important;
-        color: white !important;
-        font-weight: 600 !important;
-        padding: 10px 20px !important;
-        transition: all 0.3s ease !important;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
-    }
-    
-    .stButton > button:hover {
-        background: rgba(255, 255, 255, 0.2) !important;
-        transform: translateY(-1px) !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-    }
-    
-    .stButton > button[kind="primary"] {
-        background: rgba(65, 88, 208, 0.5) !important;
-        border: 1px solid rgba(255, 255, 255, 0.3) !important;
-    }
-    
-    .stButton > button[kind="primary"]:hover {
-        background: rgba(65, 88, 208, 0.7) !important;
-    }
-    
-    /* Header - fresh white with subtle shadow */
     .main-header {
         font-size: 2.5rem;
         font-weight: bold;
-        color: white !important;
+        color: #1f77b4;
         text-align: center;
         padding: 1rem 0;
-        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
     }
-    
-    /* Section divider - subtle */
     .section-divider {
-        border-top: 1px solid rgba(255, 255, 255, 0.2);
+        border-top: 2px solid #e0e0e0;
         margin: 2rem 0;
     }
-    
-    /* AI feature box - balanced */
+    .stExpander {
+        border: 1px solid #e0e0e0;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+    }
     .ai-feature-box {
-        background: rgba(65, 88, 208, 0.15) !important;
-        backdrop-filter: blur(15px) !important;
-        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         padding: 1rem;
-        border-radius: 12px;
+        border-radius: 10px;
         color: white;
         margin: 1rem 0;
-        box-shadow: 0 4px 12px rgba(65, 88, 208, 0.1);
-    }
-    
-    /* Text - crisp and readable */
-    h1, h2, h3, h4, h5, h6 {
-        color: white !important;
-        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.15) !important;
-        font-weight: 600 !important;
-    }
-    
-    p, span, label {
-        color: rgba(255, 255, 255, 0.95) !important;
-        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
-    }
-    
-    /* File uploader - balanced glass */
-    section[data-testid="stFileUploader"] {
-        background: rgba(255, 255, 255, 0.08) !important;
-        backdrop-filter: blur(15px) !important;
-        border: 2px dashed rgba(255, 255, 255, 0.3) !important;
-        border-radius: 16px !important;
-        padding: 25px !important;
-        transition: all 0.3s ease !important;
-    }
-    
-    section[data-testid="stFileUploader"]:hover {
-        background: rgba(255, 255, 255, 0.12) !important;
-        border-color: rgba(255, 255, 255, 0.4) !important;
-    }
-    
-    /* Tabs - clean and subtle */
-    .stTabs [data-baseweb="tab-list"] {
-        background: rgba(255, 255, 255, 0.08) !important;
-        backdrop-filter: blur(15px) !important;
-        border-radius: 12px !important;
-        padding: 4px !important;
-        gap: 4px !important;
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        color: rgba(255, 255, 255, 0.85) !important;
-        border-radius: 8px !important;
-        font-weight: 500 !important;
-        padding: 8px 16px !important;
-    }
-    
-    .stTabs [aria-selected="true"] {
-        background: rgba(255, 255, 255, 0.18) !important;
-        backdrop-filter: blur(10px) !important;
-        color: white !important;
-        font-weight: 600 !important;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
-    }
-    
-    /* Alerts - balanced colors with glass */
-    .stSuccess {
-        background: rgba(52, 199, 89, 0.15) !important;
-        backdrop-filter: blur(15px) !important;
-        border: 1px solid rgba(52, 199, 89, 0.3) !important;
-        border-radius: 12px !important;
-        color: white !important;
-    }
-    
-    .stError {
-        background: rgba(255, 59, 48, 0.15) !important;
-        backdrop-filter: blur(15px) !important;
-        border: 1px solid rgba(255, 59, 48, 0.3) !important;
-        border-radius: 12px !important;
-        color: white !important;
-    }
-    
-    .stWarning {
-        background: rgba(255, 204, 0, 0.15) !important;
-        backdrop-filter: blur(15px) !important;
-        border: 1px solid rgba(255, 204, 0, 0.3) !important;
-        border-radius: 12px !important;
-        color: white !important;
-    }
-    
-    .stInfo {
-        background: rgba(0, 122, 255, 0.15) !important;
-        backdrop-filter: blur(15px) !important;
-        border: 1px solid rgba(0, 122, 255, 0.3) !important;
-        border-radius: 12px !important;
-        color: white !important;
-    }
-    
-    /* Input fields - readable */
-    .stTextInput > div > div > input,
-    .stSelectbox > div > div > select {
-        background: rgba(255, 255, 255, 0.12) !important;
-        backdrop-filter: blur(12px) !important;
-        border: 1px solid rgba(255, 255, 255, 0.25) !important;
-        border-radius: 10px !important;
-        color: white !important;
-        padding: 10px 14px !important;
-    }
-    
-    .stTextInput > div > div > input::placeholder {
-        color: rgba(255, 255, 255, 0.6) !important;
-    }
-    
-    .stTextInput > div > div > input:focus,
-    .stSelectbox > div > div > select:focus {
-        background: rgba(255, 255, 255, 0.18) !important;
-        border: 1px solid rgba(255, 255, 255, 0.4) !important;
-        box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1) !important;
-    }
-    
-    /* Checkbox - subtle */
-    .stCheckbox {
-        background: rgba(255, 255, 255, 0.08) !important;
-        backdrop-filter: blur(8px) !important;
-        border-radius: 8px !important;
-        padding: 6px 10px !important;
-    }
-    
-    /* Metrics - professional look */
-    div[data-testid="stMetric"] {
-        background: rgba(255, 255, 255, 0.1) !important;
-        backdrop-filter: blur(15px) saturate(140%) !important;
-        border: 1px solid rgba(255, 255, 255, 0.2) !important;
-        border-radius: 14px !important;
-        padding: 18px !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
-    }
-    
-    div[data-testid="stMetricValue"] {
-        color: white !important;
-        font-weight: 700 !important;
-        font-size: 1.8rem !important;
-    }
-    
-    div[data-testid="stMetricLabel"] {
-        color: rgba(255, 255, 255, 0.9) !important;
-        font-weight: 500 !important;
-        font-size: 0.9rem !important;
-    }
-    
-    /* Expander - smooth */
-    .streamlit-expanderHeader {
-        background: rgba(255, 255, 255, 0.1) !important;
-        backdrop-filter: blur(12px) !important;
-        border: 1px solid rgba(255, 255, 255, 0.2) !important;
-        border-radius: 12px !important;
-        padding: 12px 16px !important;
-        transition: all 0.3s ease !important;
-    }
-    
-    .streamlit-expanderHeader:hover {
-        background: rgba(255, 255, 255, 0.15) !important;
-    }
-    
-    /* Scrollbar - elegant */
-    ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-    }
-    
-    ::-webkit-scrollbar-track {
-        background: rgba(255, 255, 255, 0.05);
-        border-radius: 10px;
-    }
-    
-    ::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.25);
-        border-radius: 10px;
-        transition: background 0.3s ease;
-    }
-    
-    ::-webkit-scrollbar-thumb:hover {
-        background: rgba(255, 255, 255, 0.35);
-    }
-    
-    /* Progress bar */
-    .stProgress > div > div > div {
-        background: rgba(65, 88, 208, 0.7) !important;
-        border-radius: 8px !important;
-    }
-    
-    .stProgress > div > div {
-        background: rgba(255, 255, 255, 0.15) !important;
-        backdrop-filter: blur(8px) !important;
-        border-radius: 8px !important;
-    }
-    
-    /* Download button */
-    .stDownloadButton > button {
-        background: rgba(255, 255, 255, 0.12) !important;
-        backdrop-filter: blur(12px) !important;
-        border: 1px solid rgba(255, 255, 255, 0.25) !important;
-        border-radius: 10px !important;
-        color: white !important;
-    }
-    
-    .stDownloadButton > button:hover {
-        background: rgba(255, 255, 255, 0.2) !important;
-    }
-    
-    /* Code blocks */
-    .stCodeBlock {
-        background: rgba(0, 0, 0, 0.25) !important;
-        backdrop-filter: blur(12px) !important;
-        border: 1px solid rgba(255, 255, 255, 0.15) !important;
-        border-radius: 10px !important;
-    }
-    
-    /* Dataframe */
-    .stDataFrame {
-        background: rgba(255, 255, 255, 0.08) !important;
-        backdrop-filter: blur(12px) !important;
-        border-radius: 12px !important;
-        border: 1px solid rgba(255, 255, 255, 0.15) !important;
-    }
-    
-    /* Plotly charts background */
-    .js-plotly-plot {
-        background: rgba(255, 255, 255, 0.05) !important;
-        backdrop-filter: blur(10px) !important;
-        border-radius: 14px !important;
-        padding: 15px !important;
-        border: 1px solid rgba(255, 255, 255, 0.15) !important;
     }
     </style>
 """, unsafe_allow_html=True)
+
+st.markdown('<div class="main-header">🚀 Provar AI - Enhanced XML Analyzer</div>', unsafe_allow_html=True)
 
 # -----------------------------------------------------------
 # SIDEBAR CONFIGURATION
