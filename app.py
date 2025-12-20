@@ -432,9 +432,17 @@ if uploaded_files:
                     else:
                         st.warning(f"Found {result['existing_count']} known failures")
                         for i, f in enumerate(result['existing_failures']):
-                            with st.expander(f"{i+1}. {f['testcase']}"):
-                                st.write("**Error:**", f['error'])
-                                st.write("**Browser:**", f['webBrowserType'])
+                            st.markdown(f"**{i+1}. {f['testcase']}**")
+                            col1, col2 = st.columns([1, 3])
+                            with col1:
+                                 st.write("**Browser:**", f['webBrowserType'])
+                                 st.markdown("**Path:**")
+                                 st.code(f['testcase_path'], language="text")
+                            with col2:
+                                st.error(f"Error: {f['error']}")
+                                st.markdown("**Error Details (click copy icon):**")
+                                st.code(f['details'], language="text")
+                            st.markdown("---")
                 
                 with tab3:
                     st.markdown("### 🛠️ Baseline Management")
