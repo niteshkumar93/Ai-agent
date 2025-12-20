@@ -5,8 +5,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import io
 import os
-APP_VERSION = "2.0.2"  # Increment this with each deployment
-st.sidebar.caption(f"Version: {APP_VERSION}")
+
 from xml_extractor import extract_failed_tests
 from ai_reasoner import (
     generate_ai_summary, 
@@ -146,7 +145,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<div class="main-header">🚀 Provar AI - Enhanced XML Analyzer</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-header">🤖 Provar AI Report Analysis and Baseline Tool</div>', unsafe_allow_html=True)
 
 # -----------------------------------------------------------
 # SIDEBAR CONFIGURATION
