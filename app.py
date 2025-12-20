@@ -7,11 +7,21 @@ import io
 import os
 from datetime import datetime
 def format_execution_time(raw_time: str):
-    try:
-        dt = datetime.strptime(raw_time, "%a %b %d %H:%M:%S %Z %Y")
-        return dt.strftime("%d %b %Y, %H:%M UTC")
-    except Exception:
-        return raw_time
+    if raw_time in (None, "", "Unknown"):
+        return "Unknown"
+
+    for fmt in (
+        "%Y-%m-%dT%H:%M:%S",
+        "%a %b %d %H:%M:%S %Z %Y",
+    ):
+        try:
+            dt = datetime.strptime(raw_time, fmt)
+            return dt.strftime("%d %b %Y, %H:%M UTC")
+        except ValueError:
+            continue
+
+    return raw_time
+
 from xml_extractor import extract_failed_tests
 from ai_reasoner import (
     generate_ai_summary, 
