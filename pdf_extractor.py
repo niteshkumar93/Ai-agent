@@ -1,48 +1,115 @@
-import PyPDF2
+# pdf_extractor.py
+
+try:
+    import PyPDF2
+except ImportError:
+    try:
+        import pypdf as PyPDF2
+    except ImportError:
+        raise ImportError("Please install PyPDF2 or pypdf: pip install PyPDF2")
+
 import re
-from typing import List, Dict, Optional
-import base64
+from typing import List, Dict, Optional, Tuple
 
 def extract_pdf_failures(pdf_file) -> List[Dict]:
     """
-    Extract failed test cases from Provar PDF reports with step details and screenshots.
-    Returns list of failures with:
-    - Test case name
-    - Failed step
-    - Previous passed step
-    - Error message
-    - Screenshot (if available)
+    Extract failed test cases from Provar PDF reports.
+    Handles multiple PDF report formats.
     """
     
     pdf_file.seek(0)
-    reader = PyPDF2.PdfReader(pdf_file)
     
-    failures = []
-    current_testcase = None
-    current_steps = []
-    execution_time = "Unknown"
-    browser_type = "Unknown"
-    project_path = ""
+    try:
+        reader = PyPDF2.PdfReader(pdf_file)
+    except Exception as e:
+        print(f"Error reading PDF: {e}")
+        return [{
+            "name": "__NO_FAILURES__",
+            "testcase_path": "",
+            "error": "",
+            "details": "",
+            "failed_step": "",
+            "previous_passed_step": "",
+            "next_step": "",
+            "all_steps": [],
+            "screenshot_available": False,
+            "screenshot_info": "",
+            "webBrowserType": "Unknown",
+            "projectCachePath": "",
+            "timestamp": "Unknown",
+            "_no_failures": True,
+        }]
     
     # Extract text from all pages
     full_text = ""
-    for page in reader.pages:
-        full_text += page.extract_text() + "\n"
+    for page_num, page in enumerate(reader.pages):
+        try:
+            page_text = page.extract_text()
+            full_text += page_text + f"\n--- PAGE {page_num + 1} ---\n"
+        except Exception as e:
+            print(f"Error extracting text from page {page_num}: {e}")
+            continue
     
-    # Extract global metadata
+    if not full_text.strip():
+        return [{
+            "name": "__NO_FAILURES__",
+            "testcase_path": "",
+            "error": "PDF text extraction failed",
+            "details": "Could not extract text from PDF",
+            "failed_step": "",
+            "previous_passed_step": "",
+            "next_step": "",
+            "all_steps": [],
+            "screenshot_available": False,
+            "screenshot_info": "",
+            "webBrowserType": "Unknown",
+            "projectCachePath": "",
+            "timestamp": "Unknown",
+            "_no_failures": True,
+        }]
+    
+    # Debug: Save extracted text (optional)
+    # with open("debug_pdf_text.txt", "w", encoding="utf-8") as f:
+    #     f.write(full_text)
+    
+    # Extract metadata
     execution_time = extract_execution_time(full_text)
     browser_type = extract_browser_type(full_text)
     project_path = extract_project_path(full_text)
     
-    # Split into sections by test case
-    testcase_sections = split_by_testcases(full_text)
+    # Extract failures
+    failures = []
     
-    for section in testcase_sections:
-        failure_info = parse_testcase_section(section, browser_type, project_path, execution_time)
-        if failure_info:
-            failures.append(failure_info)
+    # Method 1: Look for "Failed" or "Error" test cases
+    failed_testcases = find_failed_testcases_method1(full_text)
     
-    # Handle no failures case
+    # Method 2: Look for error messages and stack traces
+    if not failed_testcases:
+        failed_testcases = find_failed_testcases_method2(full_text)
+    
+    # Method 3: Look for red X markers or failure indicators
+    if not failed_testcases:
+        failed_testcases = find_failed_testcases_method3(full_text)
+    
+    for tc_info in failed_testcases:
+        failure_data = {
+            "name": tc_info.get("name", "Unknown Test"),
+            "testcase_path": tc_info.get("path", ""),
+            "error": tc_info.get("error", "Test execution failed"),
+            "details": tc_info.get("details", ""),
+            "failed_step": tc_info.get("failed_step", ""),
+            "previous_passed_step": tc_info.get("previous_step", ""),
+            "next_step": tc_info.get("next_step", ""),
+            "all_steps": tc_info.get("all_steps", []),
+            "screenshot_available": tc_info.get("screenshot_available", False),
+            "screenshot_info": tc_info.get("screenshot_info", ""),
+            "webBrowserType": browser_type,
+            "projectCachePath": project_path,
+            "timestamp": execution_time,
+        }
+        failures.append(failure_data)
+    
+    # If no failures found, return metadata indicating no failures
     if not failures:
         return [{
             "name": "__NO_FAILURES__",
@@ -54,7 +121,7 @@ def extract_pdf_failures(pdf_file) -> List[Dict]:
             "next_step": "",
             "all_steps": [],
             "screenshot_available": False,
-            "screenshot_data": None,
+            "screenshot_info": "",
             "webBrowserType": browser_type,
             "projectCachePath": project_path,
             "timestamp": execution_time,
@@ -67,11 +134,10 @@ def extract_pdf_failures(pdf_file) -> List[Dict]:
 def extract_execution_time(text: str) -> str:
     """Extract execution timestamp from PDF text"""
     patterns = [
-        r"Execution Time[:\s]+([^\n]+)",
-        r"Started[:\s]+([^\n]+)",
-        r"Timestamp[:\s]+([^\n]+)",
+        r"(?:Execution Time|Started|Start Time|Timestamp)[:\s]*([^\n]{10,50})",
+        r"(?:Date|Time)[:\s]*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4}[^\n]{0,30})",
+        r"(\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}:\d{2})",
         r"(\d{1,2}/\d{1,2}/\d{4}\s+\d{1,2}:\d{2}:\d{2})",
-        r"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})",
     ]
     
     for pattern in patterns:
@@ -85,8 +151,8 @@ def extract_execution_time(text: str) -> str:
 def extract_browser_type(text: str) -> str:
     """Extract browser type from PDF"""
     patterns = [
-        r"Browser[:\s]+(Chrome|Firefox|Safari|Edge|Internet Explorer)",
-        r"webBrowserType[:\s]+([^\n]+)",
+        r"(?:Browser|webBrowserType)[:\s]*(Chrome|Firefox|Safari|Edge|Internet Explorer|IE)",
+        r"(Chrome|Firefox|Safari|Edge)\s+\d+",
     ]
     
     for pattern in patterns:
@@ -100,160 +166,224 @@ def extract_browser_type(text: str) -> str:
 def extract_project_path(text: str) -> str:
     """Extract project cache path"""
     patterns = [
-        r"Project Path[:\s]+([^\n]+)",
-        r"projectCachePath[:\s]+([^\n]+)",
-        r"Cache Path[:\s]+([^\n]+)",
+        r"(?:Project Path|projectCachePath|Cache Path)[:\s]*([^\n]+)",
+        r"(?:Project|Path)[:\s]*([^\n]*(?:Jenkins|workspace)[^\n]*)",
     ]
     
     for pattern in patterns:
         match = re.search(pattern, text, re.IGNORECASE)
         if match:
-            return match.group(1).strip()
+            path = match.group(1).strip()
+            if len(path) > 10:  # Valid path
+                return path
     
     return ""
 
 
-def split_by_testcases(text: str) -> List[str]:
-    """Split PDF text into individual test case sections"""
-    # Look for test case headers (adjust pattern based on your PDF format)
-    testcase_pattern = r"(?=(?:Test Case|TestCase|Testcase)[:\s]+[A-Za-z0-9_]+)"
-    sections = re.split(testcase_pattern, text, flags=re.IGNORECASE)
-    return [s.strip() for s in sections if s.strip()]
+def find_failed_testcases_method1(text: str) -> List[Dict]:
+    """
+    Method 1: Look for explicit failure markers like "Failed", "Error", "×"
+    """
+    failures = []
+    
+    # Split by test case sections
+    testcase_pattern = r"(?:Test Case|TestCase|Test)[:\s]+([A-Za-z0-9_.\-/]+(?:\.testcase)?)"
+    matches = list(re.finditer(testcase_pattern, text, re.IGNORECASE))
+    
+    for i, match in enumerate(matches):
+        testcase_name = match.group(1).strip()
+        start_pos = match.end()
+        end_pos = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        section = text[start_pos:end_pos]
+        
+        # Check if this section contains failure indicators
+        if has_failure_indicators(section):
+            failure_info = extract_failure_details(testcase_name, section, text)
+            if failure_info:
+                failures.append(failure_info)
+    
+    return failures
 
 
-def parse_testcase_section(section: str, browser: str, project: str, timestamp: str) -> Optional[Dict]:
+def find_failed_testcases_method2(text: str) -> List[Dict]:
     """
-    Parse a single test case section to extract failure information.
-    Looks for:
-    1. Test case name
-    2. Step sequence with pass/fail markers
-    3. Failed step details
-    4. Error messages
-    5. Screenshot references
+    Method 2: Look for error messages and exceptions
     """
+    failures = []
     
-    # Extract test case name
-    testcase_name = extract_testcase_name(section)
-    if not testcase_name:
-        return None
+    # Find all error/exception blocks
+    error_patterns = [
+        r"(Error|Exception|Failed)[:\s]*([^\n]+(?:\n(?!\n)[^\n]+)*)",
+        r"(?:✗|×|❌)\s*([^\n]+(?:\n(?!\n)[^\n]+)*)",
+    ]
     
-    # Extract all steps
-    steps = extract_steps(section)
-    if not steps:
-        return None
+    for pattern in error_patterns:
+        for match in re.finditer(pattern, text, re.IGNORECASE):
+            error_text = match.group(0)
+            
+            # Try to find associated test case name
+            before_text = text[max(0, match.start() - 500):match.start()]
+            testcase_match = re.search(r"([A-Za-z0-9_.\-/]+\.testcase)", before_text)
+            
+            testcase_name = testcase_match.group(1) if testcase_match else "Unknown Test"
+            
+            failure_info = {
+                "name": testcase_name,
+                "path": "",
+                "error": match.group(0)[:200],
+                "details": error_text[:1000],
+                "failed_step": extract_failed_step_nearby(text, match.start()),
+                "previous_step": "",
+                "next_step": "",
+                "all_steps": [],
+                "screenshot_available": "screenshot" in error_text.lower(),
+                "screenshot_info": "Screenshot mentioned in error context"
+            }
+            
+            failures.append(failure_info)
     
-    # Find failed step
-    failed_step_info = find_failed_step(steps)
-    if not failed_step_info:
-        return None  # No failure in this test case
+    return failures
+
+
+def find_failed_testcases_method3(text: str) -> List[Dict]:
+    """
+    Method 3: Parse step-by-step execution looking for failures
+    """
+    failures = []
     
-    failed_step = failed_step_info['step']
-    failed_index = failed_step_info['index']
+    # Look for step sequences with failure markers
+    step_sections = re.split(r'\n(?=\d+\.|Step \d+)', text)
     
-    # Get previous passed step
-    previous_step = steps[failed_index - 1] if failed_index > 0 else None
+    current_testcase = "Unknown Test"
+    steps = []
     
-    # Get next step (if exists)
-    next_step = steps[failed_index + 1] if failed_index < len(steps) - 1 else None
+    for section in step_sections:
+        # Try to identify test case
+        tc_match = re.search(r"([A-Za-z0-9_.\-/]+\.testcase)", section)
+        if tc_match:
+            current_testcase = tc_match.group(1)
+        
+        # Check for failure in this section
+        if re.search(r'(?:✗|×|❌|failed|error)', section, re.IGNORECASE):
+            failure_info = {
+                "name": current_testcase,
+                "path": current_testcase,
+                "error": "Step execution failed",
+                "details": section[:500],
+                "failed_step": section[:200],
+                "previous_step": "",
+                "next_step": "",
+                "all_steps": [],
+                "screenshot_available": "screenshot" in section.lower(),
+                "screenshot_info": "Check failure details"
+            }
+            failures.append(failure_info)
+    
+    return failures
+
+
+def has_failure_indicators(text: str) -> bool:
+    """Check if text section contains failure indicators"""
+    failure_keywords = [
+        r'\bfailed\b',
+        r'\berror\b',
+        r'\bexception\b',
+        r'✗', r'×', r'❌',
+        r'\bFAIL\b',
+        r'assertion.*failed',
+        r'could not',
+        r'unable to',
+    ]
+    
+    for keyword in failure_keywords:
+        if re.search(keyword, text, re.IGNORECASE):
+            return True
+    
+    return False
+
+
+def extract_failure_details(testcase_name: str, section: str, full_text: str) -> Optional[Dict]:
+    """Extract detailed failure information from a test case section"""
     
     # Extract error message
-    error_message = extract_error_message(section, failed_step)
+    error_patterns = [
+        r"(?:Error|Exception|Failed)[:\s]*([^\n]+)",
+        r"(?:Message|Details)[:\s]*([^\n]+)",
+    ]
     
-    # Extract detailed error info
-    error_details = extract_error_details(section)
+    error_msg = "Execution failed"
+    for pattern in error_patterns:
+        match = re.search(pattern, section, re.IGNORECASE)
+        if match:
+            error_msg = match.group(1).strip()[:200]
+            break
     
-    # Check for screenshot
-    screenshot_available, screenshot_info = check_screenshot(section)
+    # Extract steps
+    steps = extract_steps_from_section(section)
     
-    # Build testcase path
-    testcase_path = extract_testcase_path(section) or testcase_name
+    # Find failed step
+    failed_step = ""
+    previous_step = ""
+    next_step = ""
+    
+    for i, step in enumerate(steps):
+        if step.get('status') == 'failed':
+            failed_step = step.get('text', '')
+            previous_step = steps[i-1].get('text', '') if i > 0 else ""
+            next_step = steps[i+1].get('text', '') if i < len(steps) - 1 else ""
+            break
+    
+    # Check for screenshots
+    screenshot_available = bool(re.search(r'screenshot|image|capture', section, re.IGNORECASE))
     
     return {
         "name": testcase_name,
-        "testcase_path": testcase_path,
-        "error": error_message,
-        "details": error_details,
+        "path": testcase_name,
+        "error": error_msg,
+        "details": section[:1000],
         "failed_step": failed_step,
-        "previous_passed_step": previous_step['text'] if previous_step else "",
-        "next_step": next_step['text'] if next_step else "",
+        "previous_step": previous_step,
+        "next_step": next_step,
         "all_steps": steps,
         "screenshot_available": screenshot_available,
-        "screenshot_info": screenshot_info,
-        "webBrowserType": browser,
-        "projectCachePath": project,
-        "timestamp": timestamp,
+        "screenshot_info": "Screenshot available in report" if screenshot_available else ""
     }
 
 
-def extract_testcase_name(section: str) -> Optional[str]:
-    """Extract test case name from section"""
-    patterns = [
-        r"(?:Test Case|TestCase|Testcase)[:\s]+([A-Za-z0-9_.\-/]+)",
-        r"^([A-Za-z0-9_]+\.testcase)",
-    ]
-    
-    for pattern in patterns:
-        match = re.search(pattern, section, re.IGNORECASE | re.MULTILINE)
-        if match:
-            return match.group(1).strip()
-    
-    return None
-
-
-def extract_testcase_path(section: str) -> Optional[str]:
-    """Extract full test case path"""
-    patterns = [
-        r"Path[:\s]+([^\n]+\.testcase)",
-        r"Location[:\s]+([^\n]+)",
-    ]
-    
-    for pattern in patterns:
-        match = re.search(pattern, section, re.IGNORECASE)
-        if match:
-            return match.group(1).strip()
-    
-    return None
-
-
-def extract_steps(section: str) -> List[Dict]:
-    """
-    Extract all test steps with their pass/fail status.
-    Returns list of dicts with: {text, status, index}
-    """
+def extract_steps_from_section(section: str) -> List[Dict]:
+    """Extract test steps from a section"""
     steps = []
     
-    # Pattern to match steps with green tick (✓) or red cross (✗/×)
-    # Also matches step numbers like "2.11"
-    step_patterns = [
-        r"([✓✗×❌])\s*(.+?)(?=\n[✓✗×❌]|\Z)",  # With symbols
-        r"(\d+(?:\.\d+)?)\s+([✓✗×❌])?\s*(.+?)(?=\n\d+(?:\.\d+)?|\Z)",  # With numbers
-        r"(?:On|Click|Set|Verify|Wait)\s+(.+?)(?=\n(?:On|Click|Set|Verify|Wait)|\Z)",  # Action keywords
+    # Multiple step patterns
+    patterns = [
+        r'(\d+(?:\.\d+)?)\s*([✓✗×❌]?)\s*([^\n]+)',  # Numbered steps
+        r'([✓✗×❌])\s*([^\n]+)',  # Symbol-based steps
+        r'(?:Step|Action)[:\s]*([^\n]+)',  # Step: format
     ]
     
-    # Try each pattern
-    for pattern in step_patterns:
-        matches = re.finditer(pattern, section, re.IGNORECASE | re.DOTALL)
+    for pattern in patterns:
+        matches = re.finditer(pattern, section)
         temp_steps = []
         
         for idx, match in enumerate(matches):
             groups = match.groups()
             
-            # Determine status and text based on pattern
-            if len(groups) == 2:  # Symbol + text
-                symbol, text = groups
-                status = 'failed' if symbol in ['✗', '×', '❌'] else 'passed'
-            elif len(groups) == 3:  # Number + symbol + text
+            if len(groups) == 3:  # Number + symbol + text
                 num, symbol, text = groups
-                status = 'failed' if symbol and symbol in ['✗', '×', '❌'] else 'passed'
-            else:
+                status = 'failed' if symbol in ['✗', '×', '❌'] else 'passed' if symbol == '✓' else 'unknown'
+            elif len(groups) == 2:  # Symbol + text
+                symbol, text = groups
+                status = 'failed' if symbol in ['✗', '×', '❌'] else 'passed' if symbol == '✓' else 'unknown'
+            else:  # Just text
                 text = groups[0]
                 status = 'unknown'
             
-            temp_steps.append({
-                'text': text.strip(),
-                'status': status,
-                'index': idx
-            })
+            if text and len(text.strip()) > 3:
+                temp_steps.append({
+                    'text': text.strip(),
+                    'status': status,
+                    'index': idx
+                })
         
         if temp_steps:
             steps = temp_steps
@@ -262,66 +392,18 @@ def extract_steps(section: str) -> List[Dict]:
     return steps
 
 
-def find_failed_step(steps: List[Dict]) -> Optional[Dict]:
-    """Find the first failed step in the list"""
-    for step in steps:
-        if step['status'] == 'failed':
-            return step
-    return None
-
-
-def extract_error_message(section: str, failed_step: Dict) -> str:
-    """Extract error message near the failed step"""
-    patterns = [
-        r"Error[:\s]+(.+?)(?=\n\n|\Z)",
-        r"Exception[:\s]+(.+?)(?=\n\n|\Z)",
-        r"Failed[:\s]+(.+?)(?=\n\n|\Z)",
-        r"(?:Message|Details)[:\s]+(.+?)(?=\n\n|\Z)",
+def extract_failed_step_nearby(text: str, position: int) -> str:
+    """Extract failed step near an error position"""
+    context = text[max(0, position - 200):position + 200]
+    
+    step_patterns = [
+        r'(?:On|Click|Set|Verify|Wait|Enter|Select)\s+[^\n]{10,100}',
+        r'Step[:\s]*([^\n]+)',
     ]
     
-    for pattern in patterns:
-        match = re.search(pattern, section, re.IGNORECASE | re.DOTALL)
+    for pattern in step_patterns:
+        match = re.search(pattern, context, re.IGNORECASE)
         if match:
-            return match.group(1).strip()[:200]  # Limit length
+            return match.group(0)[:150]
     
-    return "Execution failed"
-
-
-def extract_error_details(section: str) -> str:
-    """Extract full error details"""
-    patterns = [
-        r"(?:Stack Trace|Error Details|Details)[:\s]+((?:.|\n)+?)(?=\n\n[A-Z]|\Z)",
-        r"(?:Exception|Error)[:\s]+((?:.|\n)+?)(?=\n\nTest|\n\nStep|\Z)",
-    ]
-    
-    for pattern in patterns:
-        match = re.search(pattern, section, re.IGNORECASE)
-        if match:
-            return match.group(1).strip()
-    
-    # Fallback: return section near error keywords
-    error_section = re.search(r"(?:error|exception|failed).*?(?:\n.*?){0,10}", section, re.IGNORECASE | re.DOTALL)
-    if error_section:
-        return error_section.group(0).strip()
-    
-    return "No detailed error information available"
-
-
-def check_screenshot(section: str) -> tuple:
-    """
-    Check if screenshot is available and extract reference.
-    Returns (is_available: bool, info: str)
-    """
-    screenshot_patterns = [
-        r"Screenshot[:\s]+([^\n]+)",
-        r"Image[:\s]+([^\n]+)",
-        r"Capture[:\s]+([^\n]+)",
-        r"(?:screenshot|image).*?\.(?:png|jpg|jpeg)",
-    ]
-    
-    for pattern in screenshot_patterns:
-        match = re.search(pattern, section, re.IGNORECASE)
-        if match:
-            return True, match.group(0).strip()
-    
-    return False, "No screenshot available"
+    return "Step information not available"
