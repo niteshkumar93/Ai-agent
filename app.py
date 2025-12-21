@@ -7,9 +7,33 @@ import io
 import os
 from datetime import datetime
 
-# Import existing modules
+def format_execution_time(raw_time: str):
+    """Format timestamp from XML to readable format"""
+    if raw_time in (None, "", "Unknown"):
+        return "Unknown"
+
+    # Try different datetime formats
+    formats_to_try = [
+        "%Y-%m-%dT%H:%M:%S",           # ISO format: 2025-01-15T14:30:00
+        "%Y-%m-%d %H:%M:%S",           # Common format: 2025-01-15 14:30:00
+        "%a %b %d %H:%M:%S %Z %Y",     # Full format: Wed Jan 15 14:30:00 UTC 2025
+        "%Y-%m-%dT%H:%M:%S.%f",        # With milliseconds
+        "%Y-%m-%dT%H:%M:%SZ",          # With Z suffix
+        "%d/%m/%Y %H:%M:%S",           # DD/MM/YYYY format
+        "%m/%d/%Y %H:%M:%S",           # MM/DD/YYYY format
+    ]
+    
+    for fmt in formats_to_try:
+        try:
+            dt = datetime.strptime(raw_time, fmt)
+            return dt.strftime("%d %b %Y, %H:%M UTC")
+        except ValueError:
+            continue
+    
+    # If no format matches, return as-is
+    return raw_time
+
 from xml_extractor import extract_failed_tests
-from pdf_extractor import extract_pdf_failures  # NEW
 from ai_reasoner import (
     generate_ai_summary, 
     generate_batch_analysis,
@@ -30,43 +54,15 @@ KNOWN_PROJECTS = [
     "Regmain-VF", "FSL", "HYBRID_AUTOMATION_Pipeline",
 ]
 
-APP_VERSION = "3.0.0"  # Added PDF support
+APP_VERSION = "2.2.0"  # Fixed timestamp display
 
 # -----------------------------------------------------------
 # HELPERS
 # -----------------------------------------------------------
-def format_execution_time(raw_time: str):
-    """Format timestamp from XML to readable format"""
-    if raw_time in (None, "", "Unknown"):
-        return "Unknown"
-
-    formats_to_try = [
-        "%Y-%m-%dT%H:%M:%S",
-        "%Y-%m-%d %H:%M:%S",
-        "%a %b %d %H:%M:%S %Z %Y",
-        "%Y-%m-%dT%H:%M:%S.%f",
-        "%Y-%m-%dT%H:%M:%SZ",
-        "%d/%m/%Y %H:%M:%S",
-        "%m/%d/%Y %H:%M:%S",
-    ]
-    
-    for fmt in formats_to_try:
-        try:
-            dt = datetime.strptime(raw_time, fmt)
-            return dt.strftime("%d %b %Y, %H:%M UTC")
-        except ValueError:
-            continue
-    
-    return raw_time
-
-def safe_extract_failures(uploaded_file, file_type='xml'):
-    """Extract failures from XML or PDF"""
+def safe_extract_failures(uploaded_file):
     try:
         uploaded_file.seek(0)
-        if file_type == 'pdf':
-            return extract_pdf_failures(uploaded_file)
-        else:
-            return extract_failed_tests(uploaded_file)
+        return extract_failed_tests(uploaded_file)
     except Exception as e:
         st.error(f"Error parsing {uploaded_file.name}: {str(e)}")
         return []
@@ -88,7 +84,7 @@ def shorten_project_cache_path(path):
     return path.replace("/", "\\").split("\\")[-1]
 
 def render_summary_card(xml_name, new_count, existing_count, total_count):
-    """Render a summary card for each file"""
+    """Render a summary card for each XML file"""
     status_color = "🟢" if new_count == 0 else "🔴"
     
     col1, col2, col3, col4 = st.columns(4)
@@ -101,33 +97,53 @@ def render_summary_card(xml_name, new_count, existing_count, total_count):
     with col4:
         st.metric("Total Failures", total_count)
 
-def render_pdf_step_visualization(steps_data):
-    """Visualize test steps with pass/fail status"""
-    if not steps_data:
+def render_comparison_chart(all_results):
+    """Create a comparison chart across all uploaded XMLs"""
+    if not all_results:
         return
     
-    # Create a visual step flow
-    for idx, step in enumerate(steps_data):
-        status_icon = "✅" if step['status'] == 'passed' else "❌" if step['status'] == 'failed' else "⚪"
-        status_color = "green" if step['status'] == 'passed' else "red" if step['status'] == 'failed' else "gray"
-        
-        col1, col2 = st.columns([1, 10])
-        with col1:
-            st.markdown(f"**{idx+1}**")
-        with col2:
-            if step['status'] == 'failed':
-                st.error(f"{status_icon} **{step['text']}**")
-            elif step['status'] == 'passed':
-                st.success(f"{status_icon} {step['text']}")
-            else:
-                st.info(f"{status_icon} {step['text']}")
+    df_data = []
+    for result in all_results:
+        df_data.append({
+            'File': result['filename'][:30] + '...' if len(result['filename']) > 30 else result['filename'],
+            'New Failures': result['new_count'],
+            'Existing Failures': result['existing_count'],
+            'Total': result['total_count']
+        })
+    
+    df = pd.DataFrame(df_data)
+    
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        name='New Failures',
+        x=df['File'],
+        y=df['New Failures'],
+        marker_color='#FF4B4B'
+    ))
+    fig.add_trace(go.Bar(
+        name='Existing Failures',
+        x=df['File'],
+        y=df['Existing Failures'],
+        marker_color='#FFA500'
+    ))
+    
+    fig.update_layout(
+        title='Failure Comparison Across All Reports',
+        xaxis_title='XML Files',
+        yaxis_title='Number of Failures',
+        barmode='stack',
+        height=400,
+        hovermode='x unified'
+    )
+    
+    st.plotly_chart(fig, use_container_width=True)
 
 # -----------------------------------------------------------
 # PAGE CONFIGURATION
 # -----------------------------------------------------------
-st.set_page_config("Provar AI - Enhanced Analyzer", layout="wide", page_icon="🚀")
+st.set_page_config("Provar AI - Enhanced XML Analyzer", layout="wide", page_icon="🚀")
 
-# Custom CSS
+# Custom CSS for better UI
 st.markdown("""
     <style>
     .main-header {
@@ -141,68 +157,55 @@ st.markdown("""
         border-top: 2px solid #e0e0e0;
         margin: 2rem 0;
     }
-    .pdf-step-passed {
-        background-color: #d4edda;
-        padding: 0.5rem;
-        border-radius: 5px;
-        margin: 0.2rem 0;
+    .stExpander {
+        border: 1px solid #e0e0e0;
+        border-radius: 10px;
+        margin-bottom: 1rem;
     }
-    .pdf-step-failed {
-        background-color: #f8d7da;
-        padding: 0.5rem;
-        border-radius: 5px;
-        margin: 0.2rem 0;
-        font-weight: bold;
-    }
-    .screenshot-box {
-        border: 2px solid #007bff;
+    .ai-feature-box {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         padding: 1rem;
         border-radius: 10px;
-        background-color: #f0f8ff;
+        color: white;
+        margin: 1rem 0;
     }
     </style>
 """, unsafe_allow_html=True)
 
+st.markdown('<div class="main-header">🤖 Provar AI Report Analysis and Baseline Tool</div>', unsafe_allow_html=True)
+
 # -----------------------------------------------------------
-# SIDEBAR - MODE SELECTION
+# SIDEBAR CONFIGURATION
 # -----------------------------------------------------------
 with st.sidebar:
-    st.markdown('<div class="main-header">🤖 Provar AI</div>', unsafe_allow_html=True)
-    
-    st.markdown("---")
-    
-    # MODE SELECTOR
-    analysis_mode = st.radio(
-        "📊 Analysis Mode",
-        options=["XML Reports", "PDF Reports"],
-        help="Choose between XML or PDF report analysis"
-    )
-    
-    st.markdown("---")
-    
-    # AI Settings (common for both modes)
     st.header("⚙️ Configuration")
+    
+    # AI Settings
     st.subheader("🤖 AI Features")
     use_ai = st.checkbox("Enable AI Analysis", value=False, help="Use Groq AI for intelligent failure analysis")
     
+    # Advanced AI Features
     with st.expander("🎯 Advanced AI Features"):
-        enable_batch_analysis = st.checkbox("Batch Pattern Analysis", value=True)
-        enable_jira_generation = st.checkbox("Jira Ticket Generation", value=True)
-        enable_test_improvements = st.checkbox("Test Improvement Suggestions", value=False)
+        enable_batch_analysis = st.checkbox("Batch Pattern Analysis", value=True, help="Find common patterns across failures")
+        enable_jira_generation = st.checkbox("Jira Ticket Generation", value=True, help="Auto-generate Jira tickets")
+        enable_test_improvements = st.checkbox("Test Improvement Suggestions", value=False, help="Get suggestions to improve test stability")
     
     admin_key = st.text_input("🔐 Admin Key", type="password", help="Required for saving baselines")
     
     st.markdown("---")
+    
+    # Version info
     st.caption(f"Version: {APP_VERSION}")
     
     # Reset Button
-    if st.button("🔄 Reset All", type="secondary", use_container_width=True):
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
-        st.success("✅ UI Reset!")
+    if st.button("🔄 Reset All", type="secondary", use_container_width=True, help="Clear all data and start fresh"):
+        # Clear session state
+        for key in ['all_results', 'upload_stats', 'batch_analysis']:
+            if key in st.session_state:
+                del st.session_state[key]
+        st.success("✅ UI Reset! Ready for new uploads.")
         st.rerun()
     
-    # Statistics
     st.markdown("---")
     st.markdown("### 📊 Upload Statistics")
     if 'upload_stats' in st.session_state:
@@ -224,399 +227,214 @@ with st.sidebar:
         st.warning("⚠️ No AI configured")
 
 # -----------------------------------------------------------
-# MAIN CONTENT AREA
+# FILE UPLOAD SECTION
 # -----------------------------------------------------------
+st.markdown("## 📁 Upload XML Reports")
+st.markdown("Upload multiple JUnit XML reports for simultaneous AI-powered analysis")
 
-if analysis_mode == "XML Reports":
-    # ========== EXISTING XML ANALYZER ==========
-    st.markdown('<div class="main-header">📄 XML Report Analysis and Baseline Tool</div>', unsafe_allow_html=True)
-    
-    st.markdown("## 📁 Upload XML Reports")
-    uploaded_files = st.file_uploader(
-        "Choose XML files",
-        type=["xml"],
-        accept_multiple_files=True,
-        key="xml_uploader"
-    )
-    
-    if uploaded_files:
-        st.success(f"✅ {len(uploaded_files)} XML file(s) uploaded!")
-        
-        if 'all_results' not in st.session_state:
-            st.session_state.all_results = []
-        
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            analyze_all = st.button("🔍 Analyze All XML Reports", type="primary", use_container_width=True)
-        
-        if analyze_all:
-            st.session_state.all_results = []
-            progress_bar = st.progress(0)
-            status_text = st.empty()
-            
-            for idx, xml_file in enumerate(uploaded_files):
-                status_text.text(f"Processing {xml_file.name}... ({idx + 1}/{len(uploaded_files)})")
-                
-                failures = safe_extract_failures(xml_file, 'xml')
-                
-                if failures:
-                    project_path = failures[0].get("projectCachePath", "")
-                    detected_project = detect_project(project_path, xml_file.name)
-                    execution_time = failures[0].get("timestamp", "Unknown")
-                    
-                    normalized = []
-                    for f in failures:
-                        if f.get("name") != "__NO_FAILURES__":
-                            normalized.append({
-                                "testcase": f["name"],
-                                "testcase_path": f.get("testcase_path", ""),
-                                "error": f["error"],
-                                "details": f["details"],
-                                "source": xml_file.name,
-                                "webBrowserType": f.get("webBrowserType", "Unknown"),
-                                "projectCachePath": shorten_project_cache_path(f.get("projectCachePath", "")),
-                            })
-                    
-                    baseline_exists = bool(load_baseline(detected_project))
-                    if baseline_exists:
-                        new_f, existing_f = compare_with_baseline(detected_project, normalized)
-                    else:
-                        new_f, existing_f = normalized, []
-                    
-                    st.session_state.all_results.append({
-                        'filename': xml_file.name,
-                        'project': detected_project,
-                        'new_failures': new_f,
-                        'existing_failures': existing_f,
-                        'new_count': len(new_f),
-                        'existing_count': len(existing_f),
-                        'total_count': len(normalized),
-                        'baseline_exists': baseline_exists,
-                        'execution_time': execution_time,
-                        'report_type': 'xml'
-                    })
-                
-                progress_bar.progress((idx + 1) / len(uploaded_files))
-            
-            status_text.text("✅ Analysis complete!")
-            progress_bar.empty()
-            
-            # Update stats
-            total_failures = sum(r['total_count'] for r in st.session_state.all_results)
-            new_failures = sum(r['new_count'] for r in st.session_state.all_results)
-            
-            st.session_state.upload_stats = {
-                'count': len(uploaded_files),
-                'total_failures': total_failures,
-                'new_failures': new_failures
-            }
-        
-        # Display XML results (existing code continues...)
-        if st.session_state.all_results:
-            st.markdown("## 📊 XML Analysis Results")
-            
-            for idx, result in enumerate(st.session_state.all_results):
-                formatted_time = format_execution_time(result.get("execution_time", "Unknown"))
-                
-                with st.expander(
-                    f"📄 {result['filename']} | ⏰ {formatted_time} – Project: {result['project']}",
-                    expanded=False
-                ):
-                    render_summary_card(
-                        result['filename'],
-                        result['new_count'],
-                        result['existing_count'],
-                        result['total_count']
-                    )
-                    
-                    st.markdown("---")
-                    
-                    tab1, tab2, tab3 = st.tabs(["🆕 New Failures", "♻️ Existing Failures", "⚙️ Actions"])
-                    
-                    with tab1:
-                        if result['new_count'] == 0:
-                            st.success("✅ No new failures detected!")
-                        else:
-                            for i, f in enumerate(result['new_failures']):
-                                with st.expander(f"🆕 {i+1}. {f['testcase']}", expanded=False):
-                                    st.write("**Browser:**", f['webBrowserType'])
-                                    st.markdown("**Path:**")
-                                    st.code(f['testcase_path'], language="text")
-                                    st.error(f"Error: {f['error']}")
-                                    st.markdown("**Error Details:**")
-                                    st.code(f['details'], language="text")
-                                    
-                                    # AI Features (existing code)
-                                    if use_ai:
-                                        with st.spinner("Analyzing..."):
-                                            ai_analysis = generate_ai_summary(f['testcase'], f['error'], f['details'])
-                                            st.info(ai_analysis)
-                    
-                    with tab2:
-                        if result['existing_count'] == 0:
-                            st.info("ℹ️ No existing failures")
-                        else:
-                            for i, f in enumerate(result['existing_failures']):
-                                with st.expander(f"♻️ {i+1}. {f['testcase']}", expanded=False):
-                                    st.write("**Browser:**", f['webBrowserType'])
-                                    st.markdown("**Path:**")
-                                    st.code(f['testcase_path'], language="text")
-                                    st.error(f"Error: {f['error']}")
-                    
-                    with tab3:
-                        st.markdown("### 🛠️ Baseline Management")
-                        
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            if st.button(f"💾 Save as Baseline", key=f"save_xml_{idx}"):
-                                if not admin_key:
-                                    st.error("❌ Admin key required!")
-                                else:
-                                    try:
-                                        all_failures = result['new_failures'] + result['existing_failures']
-                                        save_baseline(result['project'], all_failures, admin_key)
-                                        st.success("✅ Baseline saved!")
-                                    except Exception as e:
-                                        st.error(f"❌ Error: {str(e)}")
-                        
-                        with col2:
-                            if result['baseline_exists']:
-                                st.success("✅ Baseline exists")
-                            else:
-                                st.warning("⚠️ No baseline found")
-    
-    else:
-        st.info("👆 Upload XML files to begin analysis")
+uploaded_files = st.file_uploader(
+    "Choose XML files",
+    type=["xml"],
+    accept_multiple_files=True,
+    help="Select one or more XML files to analyze"
+)
 
-else:
-    # ========== NEW PDF ANALYZER ==========
-    st.markdown('<div class="main-header">📑 PDF Report Analysis with Visual Steps</div>', unsafe_allow_html=True)
+if uploaded_files:
+    st.success(f"✅ {len(uploaded_files)} file(s) uploaded successfully!")
     
-    st.markdown("## 📁 Upload PDF Reports")
-    st.info("💡 PDF analysis extracts detailed step-by-step information including screenshots and error context")
+    # Initialize session state for results
+    if 'all_results' not in st.session_state:
+        st.session_state.all_results = []
     
-    # Debug mode toggle
-    show_debug = st.checkbox("🔍 Show Debug Info", value=False, help="Display extracted PDF text for debugging")
+    # -----------------------------------------------------------
+    # GLOBAL ANALYSIS BUTTON
+    # -----------------------------------------------------------
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        analyze_all = st.button("🔍 Analyze All Reports with AI", type="primary", use_container_width=True)
     
-    uploaded_pdf_files = st.file_uploader(
-        "Choose PDF files",
-        type=["pdf"],
-        accept_multiple_files=True,
-        key="pdf_uploader",
-        help="Upload Provar PDF reports for detailed step analysis"
-    )
-    
-    if uploaded_pdf_files:
-        st.success(f"✅ {len(uploaded_pdf_files)} PDF file(s) uploaded!")
+    if analyze_all:
+        st.session_state.all_results = []
         
-        # Debug section
-        if show_debug and uploaded_pdf_files:
-            st.markdown("### 🐛 Debug: PDF Text Extraction")
-            debug_file = uploaded_pdf_files[0]
-            debug_file.seek(0)
+        # Progress tracking
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
+        for idx, xml_file in enumerate(uploaded_files):
+            status_text.text(f"Processing {xml_file.name}... ({idx + 1}/{len(uploaded_files)})")
             
-            try:
-                import PyPDF2
-                reader = PyPDF2.PdfReader(debug_file)
+            failures = safe_extract_failures(xml_file)
+            
+            if failures:
+                project_path = failures[0].get("projectCachePath", "")
+                detected_project = detect_project(project_path, xml_file.name)
                 
-                with st.expander("📄 First Page Preview (Click to expand)", expanded=False):
-                    first_page_text = reader.pages[0].extract_text()
-                    st.text_area("Extracted Text", first_page_text, height=300)
-                    
-                    # Analysis
-                    st.markdown("**Pattern Detection:**")
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        tc_count = len(re.findall(r'\.testcase', first_page_text))
-                        st.metric("Test Cases", tc_count)
-                    with col2:
-                        failed_count = len(re.findall(r'⊗|failed', first_page_text, re.IGNORECASE))
-                        st.metric("Failure Markers", failed_count)
-                    with col3:
-                        error_count = len(re.findall(r'error|exception', first_page_text, re.IGNORECASE))
-                        st.metric("Error Keywords", error_count)
-                    
-                    # Show what we found
-                    st.markdown("**Found Failed Test Cases:**")
-                    import pdf_extractor
-                    failed_names = pdf_extractor.extract_failed_testcase_names(first_page_text)
-                    if failed_names:
-                        for name in failed_names:
-                            st.code(name)
-                    else:
-                        st.warning("No failed test cases detected in summary")
-                        
-            except Exception as e:
-                st.error(f"Debug error: {e}")
+                # ✅ CAPTURE TIMESTAMP FROM FIRST FAILURE
+                execution_time = failures[0].get("timestamp", "Unknown")
+                
+                normalized = []
+                for f in failures:
+                    if f.get("name") != "__NO_FAILURES__":
+                        normalized.append({
+                            "testcase": f["name"],
+                            "testcase_path": f.get("testcase_path", ""),
+                            "error": f["error"],
+                            "details": f["details"],
+                            "source": xml_file.name,
+                            "webBrowserType": f.get("webBrowserType", "Unknown"),
+                            "projectCachePath": shorten_project_cache_path(f.get("projectCachePath", "")),
+                        })
+                
+                # Compare with baseline
+                baseline_exists = bool(load_baseline(detected_project))
+                if baseline_exists:
+                    new_f, existing_f = compare_with_baseline(detected_project, normalized)
+                else:
+                    new_f, existing_f = normalized, []
+                
+                # ✅ STORE EXECUTION TIME IN RESULTS
+                st.session_state.all_results.append({
+                    'filename': xml_file.name,
+                    'project': detected_project,
+                    'new_failures': new_f,
+                    'existing_failures': existing_f,
+                    'new_count': len(new_f),
+                    'existing_count': len(existing_f),
+                    'total_count': len(normalized),
+                    'baseline_exists': baseline_exists,
+                    'execution_time': execution_time  # ✅ ADD THIS LINE
+                })
+            
+            progress_bar.progress((idx + 1) / len(uploaded_files))
         
-        if 'pdf_results' not in st.session_state:
-            st.session_state.pdf_results = []
+        status_text.text("✅ Analysis complete!")
+        progress_bar.empty()
         
-        col1, col2, col3 = st.columns([1, 2, 1])
+        # Update upload statistics
+        total_failures = sum(r['total_count'] for r in st.session_state.all_results)
+        new_failures = sum(r['new_count'] for r in st.session_state.all_results)
+        
+        st.session_state.upload_stats = {
+            'count': len(uploaded_files),
+            'total_failures': total_failures,
+            'new_failures': new_failures
+        }
+        
+        # Generate batch analysis if enabled
+        if use_ai and enable_batch_analysis:
+            with st.spinner("🧠 Running batch pattern analysis..."):
+                all_failures = []
+                for result in st.session_state.all_results:
+                    all_failures.extend(result['new_failures'])
+                
+                if all_failures:
+                    st.session_state.batch_analysis = generate_batch_analysis(all_failures)
+    
+    # -----------------------------------------------------------
+    # DISPLAY RESULTS
+    # -----------------------------------------------------------
+    if st.session_state.all_results:
+        
+        st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
+        
+        # -----------------------------------------------------------
+        # 🆕 BATCH PATTERN ANALYSIS
+        # -----------------------------------------------------------
+        if 'batch_analysis' in st.session_state and st.session_state.batch_analysis:
+            st.markdown('<div class="ai-feature-box">', unsafe_allow_html=True)
+            st.markdown("## 🧠 AI Batch Pattern Analysis")
+            st.markdown("AI has analyzed all failures together to identify patterns and priorities.")
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            st.markdown(st.session_state.batch_analysis)
+            st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
+        
+        st.markdown("## 📊 Overall Summary")
+        
+        # Overall statistics
+        total_new = sum(r['new_count'] for r in st.session_state.all_results)
+        total_existing = sum(r['existing_count'] for r in st.session_state.all_results)
+        total_all = sum(r['total_count'] for r in st.session_state.all_results)
+        
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("📄 Total Files", len(st.session_state.all_results))
         with col2:
-            analyze_pdf = st.button("🔍 Analyze All PDF Reports", type="primary", use_container_width=True)
+            st.metric("🆕 Total New Failures", total_new, delta=f"+{total_new}" if total_new > 0 else "0", delta_color="inverse")
+        with col3:
+            st.metric("♻️ Total Existing Failures", total_existing)
+        with col4:
+            st.metric("📈 Total All Failures", total_all)
         
-        if analyze_pdf:
-            st.session_state.pdf_results = []
-            progress_bar = st.progress(0)
-            status_text = st.empty()
-            
-            for idx, pdf_file in enumerate(uploaded_pdf_files):
-                status_text.text(f"Processing {pdf_file.name}... ({idx + 1}/{len(uploaded_pdf_files)})")
+        # Comparison chart
+        render_comparison_chart(st.session_state.all_results)
+        
+        st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
+        st.markdown("## 📋 Detailed Results by File")
+        
+        # Individual file results
+        for idx, result in enumerate(st.session_state.all_results):
+            # ✅ FORMAT THE TIMESTAMP
+            formatted_time = format_execution_time(result.get("execution_time", "Unknown"))
+
+            with st.expander(
+                f"📄 {result['filename']} | ⏰ {formatted_time} – Project: {result['project']}",
+                expanded=False
+            ):
                 
-                failures = safe_extract_failures(pdf_file, 'pdf')
+                # Summary card for this file
+                render_summary_card(
+                    result['filename'],
+                    result['new_count'],
+                    result['existing_count'],
+                    result['total_count']
+                )
                 
-                if failures:
-                    project_path = failures[0].get("projectCachePath", "")
-                    detected_project = detect_project(project_path, pdf_file.name)
-                    execution_time = failures[0].get("timestamp", "Unknown")
-                    
-                    normalized = []
-                    for f in failures:
-                        if f.get("name") != "__NO_FAILURES__":
-                            normalized.append({
-                                "testcase": f["name"],
-                                "testcase_path": f.get("testcase_path", ""),
-                                "error": f["error"],
-                                "details": f["details"],
-                                "failed_step": f.get("failed_step", ""),
-                                "previous_passed_step": f.get("previous_passed_step", ""),
-                                "next_step": f.get("next_step", ""),
-                                "all_steps": f.get("all_steps", []),
-                                "screenshot_available": f.get("screenshot_available", False),
-                                "screenshot_info": f.get("screenshot_info", ""),
-                                "source": pdf_file.name,
-                                "webBrowserType": f.get("webBrowserType", "Unknown"),
-                                "projectCachePath": shorten_project_cache_path(f.get("projectCachePath", "")),
-                            })
-                    
-                    # Baseline comparison
-                    baseline_exists = bool(load_baseline(detected_project))
-                    if baseline_exists:
-                        new_f, existing_f = compare_with_baseline(detected_project, normalized)
+                st.markdown("---")
+                
+                # Tabs for different failure types
+                tab1, tab2, tab3 = st.tabs(["🆕 New Failures", "♻️ Existing Failures", "⚙️ Actions"])
+                
+                with tab1:
+                    if result['new_count'] == 0:
+                        st.success("✅ No new failures detected!")
                     else:
-                        new_f, existing_f = normalized, []
-                    
-                    st.session_state.pdf_results.append({
-                        'filename': pdf_file.name,
-                        'project': detected_project,
-                        'new_failures': new_f,
-                        'existing_failures': existing_f,
-                        'new_count': len(new_f),
-                        'existing_count': len(existing_f),
-                        'total_count': len(normalized),
-                        'baseline_exists': baseline_exists,
-                        'execution_time': execution_time,
-                        'report_type': 'pdf'
-                    })
-                
-                progress_bar.progress((idx + 1) / len(uploaded_pdf_files))
-            
-            status_text.text("✅ PDF Analysis complete!")
-            progress_bar.empty()
-            
-            # Update stats
-            total_failures = sum(r['total_count'] for r in st.session_state.pdf_results)
-            new_failures = sum(r['new_count'] for r in st.session_state.pdf_results)
-            
-            st.session_state.upload_stats = {
-                'count': len(uploaded_pdf_files),
-                'total_failures': total_failures,
-                'new_failures': new_failures
-            }
-        
-        # Display PDF results
-        if st.session_state.pdf_results:
-            st.markdown("## 📊 PDF Analysis Results")
-            
-            for idx, result in enumerate(st.session_state.pdf_results):
-                formatted_time = format_execution_time(result.get("execution_time", "Unknown"))
-                
-                with st.expander(
-                    f"📑 {result['filename']} | ⏰ {formatted_time} – Project: {result['project']}",
-                    expanded=False
-                ):
-                    render_summary_card(
-                        result['filename'],
-                        result['new_count'],
-                        result['existing_count'],
-                        result['total_count']
-                    )
-                    
-                    st.markdown("---")
-                    
-                    tab1, tab2, tab3 = st.tabs(["🆕 New Failures (Detailed)", "♻️ Existing Failures", "⚙️ Actions"])
-                    
-                    with tab1:
-                        if result['new_count'] == 0:
-                            st.success("✅ No new failures detected!")
-                        else:
-                            for i, f in enumerate(result['new_failures']):
-                                with st.expander(f"🆕 {i+1}. {f['testcase']}", expanded=False):
-                                    # Basic info
-                                    col1, col2 = st.columns(2)
-                                    with col1:
-                                        st.write("**Browser:**", f['webBrowserType'])
-                                    with col2:
-                                        st.write("**Screenshot:**", "✅ Available" if f.get('screenshot_available') else "❌ Not Available")
+                        for i, f in enumerate(result['new_failures']):
+                            with st.expander(f"🆕 {i+1}. {f['testcase']}", expanded=False):
+                                st.write("**Browser:**", f['webBrowserType'])
+
+                                # Path (full width, readable)
+                                st.markdown("**Path:**")
+                                st.code(f['testcase_path'], language="text")
+
+                                # Error summary
+                                st.error(f"Error: {f['error']}")
+
+                                # Error details (copyable)
+                                st.markdown("**Error Details (click copy icon):**")
+                                st.code(f['details'], language="text")
+
+                                
+                                # AI Features
+                                if use_ai:
+                                    ai_tabs = []
+                                    if True:  # Basic analysis always available
+                                        ai_tabs.append("🤖 AI Analysis")
+                                    if enable_jira_generation:
+                                        ai_tabs.append("📝 Jira Ticket")
+                                    if enable_test_improvements:
+                                        ai_tabs.append("💡 Improvements")
                                     
-                                    st.markdown("**Test Case Path:**")
-                                    st.code(f['testcase_path'], language="text")
-                                    
-                                    # Error summary
-                                    st.error(f"**Error:** {f['error']}")
-                                    
-                                    st.markdown("---")
-                                    
-                                    # Step-by-step visualization
-                                    st.markdown("### 📋 Test Execution Steps")
-                                    
-                                    if f.get('all_steps'):
-                                        render_pdf_step_visualization(f['all_steps'])
-                                    else:
-                                        # Fallback to showing available step info
-                                        if f.get('previous_passed_step'):
-                                            st.success(f"✅ Previous Passed Step: {f['previous_passed_step']}")
-                                        
-                                        if f.get('failed_step'):
-                                            st.error(f"❌ **Failed Step:** {f['failed_step']}")
-                                        
-                                        if f.get('next_step'):
-                                            st.info(f"⏭️ Next Step: {f['next_step']}")
-                                    
-                                    st.markdown("---")
-                                    
-                                    # Screenshot section
-                                    if f.get('screenshot_available'):
-                                        st.markdown('<div class="screenshot-box">', unsafe_allow_html=True)
-                                        st.markdown("### 📸 Screenshot Information")
-                                        st.info(f['screenshot_info'])
-                                        st.markdown('</div>', unsafe_allow_html=True)
-                                    
-                                    st.markdown("---")
-                                    
-                                    # Detailed error
-                                    with st.expander("🔍 Full Error Details", expanded=False):
-                                        st.code(f['details'], language="text")
-                                    
-                                    # AI Features
-                                    if use_ai:
-                                        st.markdown("---")
-                                        ai_tabs = ["🤖 AI Analysis"]
-                                        if enable_jira_generation:
-                                            ai_tabs.append("📝 Jira Ticket")
-                                        if enable_test_improvements:
-                                            ai_tabs.append("💡 Improvements")
-                                        
+                                    if len(ai_tabs) > 0:
                                         ai_tab_objects = st.tabs(ai_tabs)
                                         
+                                        # Basic AI Analysis
                                         with ai_tab_objects[0]:
-                                            with st.spinner("Analyzing with AI..."):
-                                                # Include step context in AI analysis
-                                                context = f"\nFailed Step: {f.get('failed_step', '')}\nPrevious Step: {f.get('previous_passed_step', '')}"
-                                                ai_analysis = generate_ai_summary(f['testcase'], f['error'], f['details'] + context)
+                                            with st.spinner("Analyzing..."):
+                                                ai_analysis = generate_ai_summary(f['testcase'], f['error'], f['details'])
                                                 st.info(ai_analysis)
                                         
+                                        # Jira Ticket Generation
                                         if enable_jira_generation and len(ai_tab_objects) > 1:
                                             with ai_tab_objects[1]:
                                                 with st.spinner("Generating Jira ticket..."):
@@ -631,72 +449,99 @@ else:
                                                         "📥 Download Jira Content",
                                                         jira_content,
                                                         file_name=f"jira_{f['testcase'][:30]}.txt",
-                                                        key=f"jira_pdf_{idx}_{i}"
+                                                        key=f"jira_{idx}_{i}"
                                                     )
+                                        
+                                        # Test Improvements
+                                        if enable_test_improvements and len(ai_tab_objects) > 2:
+                                            with ai_tab_objects[-1]:
+                                                with st.spinner("Generating improvement suggestions..."):
+                                                    improvements = suggest_test_improvements(
+                                                        f['testcase'],
+                                                        f['error'],
+                                                        f['details']
+                                                    )
+                                                    st.success(improvements)
+                                
+                                st.markdown("---")
+                
+                with tab2:
+                    if result['existing_count'] == 0:
+                        st.info("ℹ️ No existing failures found in baseline")
+                    else:
+                        st.warning(f"Found {result['existing_count']} known failures")
+                        for i, f in enumerate(result['existing_failures']):
+                            with st.expander(f"♻️ {i+1}. {f['testcase']}", expanded=False):
+                                st.write("**Browser:**", f['webBrowserType'])
+                                st.markdown("**Path:**")
+                                st.code(f['testcase_path'], language="text")
+                                st.error(f"Error: {f['error']}")
+                                st.markdown("**Error Details:**")
+                                st.code(f['details'], language="text")
+                                st.markdown("---")
+                
+                with tab3:
+                    st.markdown("### 🛠️ Baseline Management")
                     
-                    with tab2:
-                        if result['existing_count'] == 0:
-                            st.info("ℹ️ No existing failures in baseline")
-                        else:
-                            st.warning(f"Found {result['existing_count']} known failures")
-                            for i, f in enumerate(result['existing_failures']):
-                                with st.expander(f"♻️ {i+1}. {f['testcase']}", expanded=False):
-                                    st.write("**Browser:**", f['webBrowserType'])
-                                    st.markdown("**Path:**")
-                                    st.code(f['testcase_path'], language="text")
-                                    st.error(f"Error: {f['error']}")
-                                    
-                                    if f.get('failed_step'):
-                                        st.markdown("**Failed Step:**")
-                                        st.code(f['failed_step'], language="text")
-                    
-                    with tab3:
-                        st.markdown("### 🛠️ Baseline Management")
-                        
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            if st.button(f"💾 Save as Baseline", key=f"save_pdf_{idx}"):
-                                if not admin_key:
-                                    st.error("❌ Admin key required!")
-                                else:
-                                    try:
-                                        all_failures = result['new_failures'] + result['existing_failures']
-                                        save_baseline(result['project'], all_failures, admin_key)
-                                        st.success("✅ Baseline saved successfully!")
-                                    except Exception as e:
-                                        st.error(f"❌ Error: {str(e)}")
-                        
-                        with col2:
-                            if result['baseline_exists']:
-                                st.success("✅ Baseline exists")
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.button(f"💾 Save as Baseline", key=f"save_{idx}"):
+                            if not admin_key:
+                                st.error("❌ Admin key required!")
                             else:
-                                st.warning("⚠️ No baseline found")
-                        
-                        # Export
-                        st.markdown("### 📤 Export Options")
-                        export_data = pd.DataFrame(result['new_failures'] + result['existing_failures'])
-                        
-                        if not export_data.empty:
-                            csv = export_data.to_csv(index=False)
-                            st.download_button(
-                                label="📥 Download as CSV",
-                                data=csv,
-                                file_name=f"{result['filename']}_failures.csv",
-                                mime="text/csv",
-                                key=f"export_pdf_{idx}"
-                            )
+                                try:
+                                    all_failures = result['new_failures'] + result['existing_failures']
+                                    save_baseline(result['project'], all_failures, admin_key)
+                                    st.success("✅ Baseline saved successfully!")
+                                except Exception as e:
+                                    st.error(f"❌ Error: {str(e)}")
+                    
+                    with col2:
+                        if result['baseline_exists']:
+                            st.success("✅ Baseline exists for this project")
+                        else:
+                            st.warning("⚠️ No baseline found")
+                    
+                    # Export options
+                    st.markdown("### 📤 Export Options")
+                    export_data = pd.DataFrame(result['new_failures'] + result['existing_failures'])
+                    
+                    if not export_data.empty:
+                        csv = export_data.to_csv(index=False)
+                        st.download_button(
+                            label="📥 Download as CSV",
+                            data=csv,
+                            file_name=f"{result['filename']}_failures.csv",
+                            mime="text/csv",
+                            key=f"export_{idx}"
+                        )
+
+else:
+    # Welcome message when no files uploaded
+    st.info("👆 Upload one or more XML files to begin AI-powered analysis")
     
-    else:
-        st.info("👆 Upload PDF files to begin detailed step-by-step analysis")
-        
-        st.markdown("### 🎯 PDF Analysis Features")
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.markdown("**📋 Step-by-Step Details**")
-            st.write("See exactly which step failed with pass/fail markers")
-        with col2:
-            st.markdown("**📸 Screenshot Context**")
-            st.write("View screenshot references at the point of failure")
-        with col3:
-            st.markdown("**🔍 Error Context**")
-            st.write("Understand the flow with previous and next steps")
+    st.markdown("### 🎯 Features")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("**📊 Multi-File Analysis**")
+        st.write("Upload and analyze multiple XML reports simultaneously")
+    with col2:
+        st.markdown("**🤖 AI-Powered Insights**")
+        st.write("Get intelligent failure analysis with Groq (FREE)")
+    with col3:
+        st.markdown("**📈 Baseline Tracking**")
+        st.write("Compare results against historical baselines")
+    
+    st.markdown("---")
+    
+    st.markdown("### 🆕 New AI Features")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("**🧠 Batch Pattern Analysis**")
+        st.write("AI identifies common patterns across all failures")
+    with col2:
+        st.markdown("**📝 Jira Auto-Generation**")
+        st.write("Create ready-to-use Jira tickets instantly")
+    with col3:
+        st.markdown("**💡 Test Improvements**")
+        st.write("Get suggestions to make tests more stable")

@@ -4,5 +4,4 @@ plotly
 requests
 openai
 openpyxl
-PyPDF2
 
