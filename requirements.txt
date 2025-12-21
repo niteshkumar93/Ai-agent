@@ -4,4 +4,4 @@ plotly
 requests
 openai
 openpyxl
-
+PyPDF2==3.0.1
