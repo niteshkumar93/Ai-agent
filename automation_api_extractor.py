@@ -1,233 +1,394 @@
+# api_xml_extractor.py
 """
-Automation API XML Report Extractor
-Extracts failures from Automation API Jenkins reports with spec file grouping
+Parser for Automation API XML reports.
+Extracts failures from testsuite with spec file information.
 """
 
 import xml.etree.ElementTree as ET
-import re
 from typing import List, Dict, Optional
+import re
 
 
-def extract_spec_name_from_path(file_path: str) -> str:
+def extract_api_failures(xml_file) -> List[Dict]:
     """
-    Extract spec file name from stack trace paths
-    Example: D:\Jenkins\workspace\AutomationAPI_Flexi5\...\Opp_Text_Ads_RL_Console.spec.js
-    Returns: Opp_Text_Ads_RL_Console
-    """
-    # Look for .spec.js pattern
-    spec_match = re.search(r'([A-Za-z_]+)\.spec\.js', file_path)
-    if spec_match:
-        return spec_match.group(1)
-    return "Unknown_Spec"
-
-
-def extract_project_from_workspace(path: str) -> str:
-    """
-    Extract project name from Jenkins workspace path
-    Example: D:\Jenkins\workspace\AutomationAPI_Flexi5\...
-    Returns: AutomationAPI_Flexi5
-    """
-    workspace_match = re.search(r'workspace[/\\]([^/\\]+)', path)
-    if workspace_match:
-        return workspace_match.group(1)
-    return "Unknown_Project"
-
-
-def parse_error_summary(error_message: str) -> Dict[str, str]:
-    """
-    Parse the complex JavaScript error message to extract key information
-    """
-    summary = {
-        "error_type": "Unknown",
-        "short_description": "",
-        "full_message": error_message
-    }
+    Extract failures from Automation API XML reports.
     
-    # Extract error type (toBe, exception, etc.)
-    type_match = re.search(r'Error: Expected.*to be ([\w]+)', error_message)
-    if type_match:
-        summary["error_type"] = "Assertion Failure"
-        summary["short_description"] = f"Assertion failed: Expected value to be {type_match.group(1)}"
-    elif "TimeoutError" in error_message:
-        summary["error_type"] = "Timeout"
-        # Extract the element being searched for
-        element_match = re.search(r"By\(xpath, (.*?)\)", error_message)
-        if element_match:
-            xpath = element_match.group(1).replace("&apos;", "'")
-            summary["short_description"] = f"Element not found: {xpath[:100]}"
-        else:
-            summary["short_description"] = "Wait timed out while locating element"
-    elif "Skipping the test case because the previous step has failed" in error_message:
-        summary["error_type"] = "Skipped (Cascading Failure)"
-        # Extract the original error
-        original_match = re.search(r'failed with error: (.+?)(?:\n|$)', error_message)
-        if original_match:
-            summary["short_description"] = f"Dependent on previous failure"
-        else:
-            summary["short_description"] = "Skipped due to previous test failure"
-    elif "Invalid Test Case XML" in error_message:
-        summary["error_type"] = "Configuration Error"
-        summary["short_description"] = "Test case XML validation failed"
-    else:
-        summary["error_type"] = "Error"
-        # Take first line as summary
-        first_line = error_message.split('\n')[0][:150]
-        summary["short_description"] = first_line
+    Structure:
+    - <testsuites> root
+    - <testsuite> with name="SpecFileName" (e.g., "FS_MAP_SF_RL_LX_Text_Ads_Opp_OBJ_Console")
+    - <testcase> with failures
+    - <failure> containing error messages
     
-    return summary
-
-
-def is_cascading_failure(error_message: str) -> bool:
-    """Check if this failure is caused by a previous failure"""
-    return "Skipping the test case because the previous step has failed" in error_message
-
-
-def extract_automation_api_failures(xml_file) -> List[Dict]:
+    Returns list of failure dictionaries.
     """
-    Extract failures from Automation API XML reports
-    Returns list of failures grouped by spec file
-    """
+    
+    xml_file.seek(0)
+    
     try:
         tree = ET.parse(xml_file)
         root = tree.getroot()
     except ET.ParseError as e:
-        return [{
-            "name": "__PARSE_ERROR__",
-            "error": f"XML Parse Error: {str(e)}",
-            "details": "Could not parse the XML file",
-            "spec_file": "N/A",
-            "projectCachePath": ""
-        }]
+        return create_no_failure_record(f"XML parse error: {e}")
+    except Exception as e:
+        return create_no_failure_record(f"Error reading XML: {e}")
+    
+    # Extract metadata from root
+    metadata = extract_metadata_from_root(root)
+    
+    # Find all testsuites
+    testsuites = root.findall('.//testsuite')
+    
+    if not testsuites:
+        return create_no_failure_record("No testsuites found in XML")
     
     failures = []
-    project_name = "Unknown"
     
-    # Iterate through all testsuites
-    for testsuite in root.findall('.//testsuite'):
-        suite_name = testsuite.get('name', 'Unknown Suite')
-        timestamp = testsuite.get('timestamp', 'Unknown')
+    for testsuite in testsuites:
+        spec_name = testsuite.get('name', 'Unknown')
+        failures_count = int(testsuite.get('failures', '0'))
         
-        # Iterate through testcases
-        for testcase in testsuite.findall('.//testcase'):
-            testcase_name = testcase.get('name', 'Unknown Test')
-            classname = testcase.get('classname', '')
-            execution_time = testcase.get('time', '0')
-            
-            # Check if this testcase has failures
-            failure_elements = testcase.findall('failure')
+        # Skip testsuites with no failures
+        if failures_count == 0:
+            continue
+        
+        # Extract spec file path from failure messages (it contains full path)
+        spec_file_path = extract_spec_file_path(testsuite)
+        
+        # Process each testcase in this testsuite
+        testcases = testsuite.findall('.//testcase')
+        
+        for testcase in testcases:
+            failure_elements = testcase.findall('.//failure')
             
             if failure_elements:
-                for failure_elem in failure_elements:
-                    failure_type = failure_elem.get('type', 'unknown')
-                    failure_message = failure_elem.get('message', 'No message')
-                    failure_details = failure_elem.text or failure_message
-                    
-                    # Extract spec file name from stack trace
-                    spec_file = extract_spec_name_from_path(failure_details)
-                    
-                    # Extract project from workspace path
-                    if project_name == "Unknown":
-                        project_name = extract_project_from_workspace(failure_details)
-                    
-                    # Parse error for summary
-                    error_summary = parse_error_summary(failure_details)
-                    
-                    # Determine if this is a cascading failure
-                    is_cascaded = is_cascading_failure(failure_details)
-                    
-                    failure_info = {
-                        "name": testcase_name,
-                        "classname": classname,
-                        "spec_file": spec_file,
-                        "suite_name": suite_name,
-                        "error": error_summary["short_description"],
-                        "error_type": error_summary["error_type"],
-                        "details": failure_details,
-                        "failure_type": failure_type,
-                        "execution_time": execution_time,
-                        "timestamp": timestamp,
-                        "projectCachePath": failure_details.split('\n')[0] if '\n' in failure_details else "",
-                        "is_cascading_failure": is_cascaded,
-                        "testcase_path": f"{suite_name} > {testcase_name}"
-                    }
-                    
+                # This testcase has failures
+                testcase_name = testcase.get('name', 'Unknown')
+                testcase_time = testcase.get('time', '0')
+                
+                failure_info = extract_failure_info(
+                    spec_name=spec_name,
+                    spec_file_path=spec_file_path,
+                    testcase_name=testcase_name,
+                    testcase_time=testcase_time,
+                    failure_elements=failure_elements,
+                    metadata=metadata
+                )
+                
+                if failure_info:
                     failures.append(failure_info)
     
-    # If no failures found, return placeholder
     if not failures:
-        return [{
-            "name": "__NO_FAILURES__",
-            "error": "No failures detected",
-            "details": "All tests passed successfully",
-            "spec_file": "N/A",
-            "projectCachePath": ""
-        }]
-    
-    # Group failures by spec file (sort by spec file name)
-    failures.sort(key=lambda x: (x.get('spec_file', ''), x.get('name', '')))
+        return create_no_failure_record(
+            metadata=metadata,
+            is_clean_run=True
+        )
     
     return failures
 
 
-def group_failures_by_spec(failures: List[Dict]) -> Dict[str, List[Dict]]:
-    """
-    Group failures by their spec file name
-    Returns: {spec_file_name: [list of failures]}
-    """
-    grouped = {}
+def create_no_failure_record(
+    message: str = "",
+    metadata: Dict = None,
+    is_clean_run: bool = False
+) -> List[Dict]:
+    """Create a record indicating no failures"""
     
-    for failure in failures:
-        spec_file = failure.get('spec_file', 'Unknown_Spec')
-        
-        if spec_file not in grouped:
-            grouped[spec_file] = []
-        
-        grouped[spec_file].append(failure)
+    if metadata is None:
+        metadata = {
+            "report_name": "Unknown",
+            "total_tests": 0,
+            "total_failures": 0,
+            "timestamp": "Unknown"
+        }
     
-    return grouped
+    return [{
+        "name": "__NO_FAILURES__",
+        "spec_name": "",
+        "spec_file_path": "",
+        "testcase_name": "",
+        "error": "" if is_clean_run else message,
+        "error_type": "",
+        "error_details": "",
+        "is_skipped": False,
+        "skip_reason": "",
+        "execution_time": 0,
+        "report_name": metadata.get("report_name", "Unknown"),
+        "total_tests": metadata.get("total_tests", 0),
+        "total_failures": metadata.get("total_failures", 0),
+        "timestamp": metadata.get("timestamp", "Unknown"),
+        "_no_failures": True,
+    }]
 
 
-def get_spec_summary(spec_failures: List[Dict]) -> Dict:
-    """
-    Get summary statistics for a spec file
-    """
-    total = len(spec_failures)
-    cascading = sum(1 for f in spec_failures if f.get('is_cascading_failure', False))
-    root_failures = total - cascading
+def extract_metadata_from_root(root) -> Dict:
+    """Extract metadata from root testsuites element"""
     
-    # Get error types distribution
-    error_types = {}
-    for f in spec_failures:
-        error_type = f.get('error_type', 'Unknown')
-        error_types[error_type] = error_types.get(error_type, 0) + 1
+    metadata = {}
+    
+    # Extract from root attributes
+    metadata["total_tests"] = int(root.get('tests', '0'))
+    metadata["total_failures"] = int(root.get('failures', '0'))
+    metadata["total_time"] = float(root.get('time', '0'))
+    metadata["total_errors"] = int(root.get('errors', '0'))
+    metadata["disabled"] = int(root.get('disabled', '0'))
+    
+    # Try to find timestamp from first testsuite
+    first_suite = root.find('.//testsuite')
+    if first_suite is not None:
+        metadata["timestamp"] = first_suite.get('timestamp', 'Unknown')
+    else:
+        metadata["timestamp"] = "Unknown"
+    
+    # Extract report name from file path in failures
+    # Will be updated when we find it in failure messages
+    metadata["report_name"] = "AutomationAPI"
+    
+    return metadata
+
+
+def extract_spec_file_path(testsuite) -> str:
+    """
+    Extract the spec file path from failure messages.
+    
+    Format: D:\Jenkins\workspace\AutomationAPI_Flexi5\...\BaseSpec.js
+    We want: AutomationAPI_Flexi5
+    """
+    
+    # Look for path in any failure message
+    testcases = testsuite.findall('.//testcase')
+    
+    for testcase in testcases:
+        failures = testcase.findall('.//failure')
+        for failure in failures:
+            message = failure.get('message', '')
+            cdata = failure.text or ''
+            full_text = message + ' ' + cdata
+            
+            # Look for Jenkins workspace path
+            match = re.search(r'D:\\Jenkins\\workspace\\([^\\]+)', full_text)
+            if match:
+                return match.group(1)
+            
+            # Alternative: Look for file:/// path
+            match = re.search(r'file:///D:/Jenkins/workspace/([^/]+)', full_text)
+            if match:
+                return match.group(1)
+    
+    return "Unknown"
+
+
+def extract_failure_info(
+    spec_name: str,
+    spec_file_path: str,
+    testcase_name: str,
+    testcase_time: str,
+    failure_elements: List,
+    metadata: Dict
+) -> Optional[Dict]:
+    """
+    Extract detailed failure information from testcase.
+    
+    A testcase can have multiple <failure> elements.
+    """
+    
+    # Determine if this is a skipped failure
+    is_skipped = False
+    skip_reason = ""
+    error_message = ""
+    error_type = ""
+    error_details = ""
+    
+    # Process all failure elements
+    for failure in failure_elements:
+        failure_type = failure.get('type', 'unknown')
+        failure_message = failure.get('message', '')
+        failure_cdata = failure.text or ''
+        
+        # Check if this is a skipped test (due to previous failure)
+        if 'Skipping the test case because the previous step has failed' in failure_message or \
+           'Skipping the test case because the previous step has failed' in failure_cdata:
+            is_skipped = True
+            skip_reason = extract_skip_reason(failure_message, failure_cdata)
+        
+        # Extract error information
+        if not is_skipped:
+            error_type = failure_type
+            error_message = extract_clean_error_message(failure_message)
+            error_details = extract_error_details(failure_cdata)
+        else:
+            # For skipped tests, still capture the original error
+            if not error_message:
+                error_message = "Skipped due to previous failure"
+                error_details = skip_reason
+    
+    # Get clean spec name (the actual spec file like "Opp_Text_Ads_RL_ConsoleSpec")
+    clean_spec_name = extract_spec_name_from_path(failure_elements)
+    if not clean_spec_name:
+        clean_spec_name = spec_name
     
     return {
-        'total_failures': total,
-        'root_failures': root_failures,
-        'cascading_failures': cascading,
-        'error_types': error_types,
-        'first_failure': spec_failures[0] if spec_failures else None
+        "name": testcase_name,
+        "spec_name": clean_spec_name,
+        "spec_file_path": spec_file_path,
+        "testcase_name": testcase_name,
+        "error": error_message,
+        "error_type": error_type,
+        "error_details": error_details,
+        "is_skipped": is_skipped,
+        "skip_reason": skip_reason,
+        "execution_time": float(testcase_time),
+        "report_name": metadata.get("report_name", "AutomationAPI"),
+        "total_tests": metadata.get("total_tests", 0),
+        "total_failures": metadata.get("total_failures", 0),
+        "timestamp": metadata.get("timestamp", "Unknown"),
     }
 
 
-if __name__ == "__main__":
-    # Test the extractor
-    import sys
+def extract_spec_name_from_path(failure_elements: List) -> str:
+    """
+    Extract the spec file name from error stack trace.
     
-    if len(sys.argv) > 1:
-        with open(sys.argv[1], 'r') as f:
-            failures = extract_automation_api_failures(f)
-            
-            print(f"Found {len(failures)} failures")
-            
-            grouped = group_failures_by_spec(failures)
-            print(f"\nGrouped into {len(grouped)} spec files:")
-            
-            for spec_file, spec_failures in grouped.items():
-                summary = get_spec_summary(spec_failures)
-                print(f"\n{spec_file}:")
-                print(f"  Total: {summary['total_failures']}")
-                print(f"  Root: {summary['root_failures']}")
-                print(f"  Cascading: {summary['cascading_failures']}")
-    else:
-        print("Usage: python automation_api_extractor.py <xml_file>")
+    Example: Opp_Text_Ads_RL_ConsoleSpec from:
+    "at Opp_Text_Ads_RL_ConsoleSpec.<anonymous> (D:\Jenkins\...)"
+    """
+    
+    for failure in failure_elements:
+        failure_cdata = failure.text or ''
+        
+        # Pattern: "at SpecName.<anonymous>"
+        match = re.search(r'at\s+([A-Za-z0-9_]+Spec)\.<anonymous>', failure_cdata)
+        if match:
+            return match.group(1)
+        
+        # Alternative: Look for .spec file reference
+        match = re.search(r'([A-Za-z0-9_]+Spec)\.js', failure_cdata)
+        if match:
+            return match.group(1)
+    
+    return ""
+
+
+def extract_clean_error_message(message: str) -> str:
+    """
+    Extract a clean, readable error message.
+    
+    Examples:
+    - "Expected Object(...) to be null, 'Invalid Test Case XML'."
+    - "Failed: Skipping the test case..."
+    """
+    
+    if not message:
+        return "Test execution failed"
+    
+    # For "Expected ... to be null, 'message'" pattern
+    match = re.search(r"to be null,\s*['\"]([^'\"]+)['\"]", message)
+    if match:
+        return match.group(1)
+    
+    # For TimeoutError
+    if 'TimeoutError' in message:
+        match = re.search(r'TimeoutError:\s*([^\n]+)', message)
+        if match:
+            return match.group(1)
+    
+    # For generic errors - take first 200 chars
+    clean = message.strip()
+    if len(clean) > 200:
+        return clean[:200] + "..."
+    
+    return clean
+
+
+def extract_error_details(cdata: str) -> str:
+    """
+    Extract detailed error information from CDATA section.
+    
+    Includes:
+    - Error type
+    - Stack trace (first 10 lines)
+    - Relevant context
+    """
+    
+    if not cdata:
+        return ""
+    
+    lines = cdata.split('\n')
+    
+    # Take first 15 lines of error (usually contains the important info)
+    error_lines = []
+    for line in lines[:15]:
+        line = line.strip()
+        if line and not line.startswith('---'):
+            error_lines.append(line)
+    
+    return '\n'.join(error_lines)
+
+
+def extract_skip_reason(message: str, cdata: str) -> str:
+    """
+    Extract the reason why a test was skipped.
+    
+    Pattern: "Skipping the test case because the previous step has failed with error: [ERROR]"
+    """
+    
+    full_text = message + ' ' + cdata
+    
+    # Pattern 1: After "previous step has failed with error:"
+    match = re.search(r'previous step has failed with error:\s*(.+?)(?:\n|$)', full_text)
+    if match:
+        reason = match.group(1).strip()
+        # Limit to 300 chars
+        if len(reason) > 300:
+            return reason[:300] + "..."
+        return reason
+    
+    # Pattern 2: Look for the actual error message
+    match = re.search(r'TimeoutError:\s*(.+?)(?:\n|$)', full_text)
+    if match:
+        return match.group(1).strip()
+    
+    return "Previous step failed"
+
+
+def compare_api_reports(current_failures: List[Dict], baseline_failures: List[Dict]) -> Dict:
+    """
+    Compare current API report with baseline.
+    
+    Returns:
+    - new_failures: Failures not in baseline
+    - fixed_failures: Failures in baseline but not in current
+    - common_failures: Failures in both
+    """
+    
+    # Handle no failures case
+    if current_failures and current_failures[0].get('_no_failures'):
+        current_failures = []
+    
+    if baseline_failures and baseline_failures[0].get('_no_failures'):
+        baseline_failures = []
+    
+    # Create lookup keys: spec_name + testcase_name
+    def make_key(failure):
+        return f"{failure.get('spec_name', '')}::{failure.get('testcase_name', '')}"
+    
+    current_map = {make_key(f): f for f in current_failures}
+    baseline_map = {make_key(f): f for f in baseline_failures}
+    
+    current_keys = set(current_map.keys())
+    baseline_keys = set(baseline_map.keys())
+    
+    # Calculate differences
+    new_keys = current_keys - baseline_keys
+    fixed_keys = baseline_keys - current_keys
+    common_keys = current_keys & baseline_keys
+    
+    return {
+        "new_failures": [current_map[k] for k in new_keys],
+        "fixed_failures": [baseline_map[k] for k in fixed_keys],
+        "common_failures": [current_map[k] for k in common_keys],
+        "current_total": len(current_failures),
+        "baseline_total": len(baseline_failures),
+        "new_count": len(new_keys),
+        "fixed_count": len(fixed_keys),
+        "common_count": len(common_keys),
+    }
