@@ -2,8 +2,6 @@
 Flask application for Provar Test Report Analyzer
 Supports XML, PDF, and Automation API reports
 """
-
-from flask import Flask, render_template, request, jsonify, session
 from werkzeug.utils import secure_filename
 import os
 from datetime import datetime
