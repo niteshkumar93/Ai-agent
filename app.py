@@ -6,20 +6,31 @@ from plotly.subplots import make_subplots
 import io
 import os
 from datetime import datetime
+
 def format_execution_time(raw_time: str):
+    """Format timestamp from XML to readable format"""
     if raw_time in (None, "", "Unknown"):
         return "Unknown"
 
-    for fmt in (
-        "%Y-%m-%dT%H:%M:%S",
-        "%a %b %d %H:%M:%S %Z %Y",
-    ):
+    # Try different datetime formats
+    formats_to_try = [
+        "%Y-%m-%dT%H:%M:%S",           # ISO format: 2025-01-15T14:30:00
+        "%Y-%m-%d %H:%M:%S",           # Common format: 2025-01-15 14:30:00
+        "%a %b %d %H:%M:%S %Z %Y",     # Full format: Wed Jan 15 14:30:00 UTC 2025
+        "%Y-%m-%dT%H:%M:%S.%f",        # With milliseconds
+        "%Y-%m-%dT%H:%M:%SZ",          # With Z suffix
+        "%d/%m/%Y %H:%M:%S",           # DD/MM/YYYY format
+        "%m/%d/%Y %H:%M:%S",           # MM/DD/YYYY format
+    ]
+    
+    for fmt in formats_to_try:
         try:
             dt = datetime.strptime(raw_time, fmt)
             return dt.strftime("%d %b %Y, %H:%M UTC")
         except ValueError:
             continue
-
+    
+    # If no format matches, return as-is
     return raw_time
 
 from xml_extractor import extract_failed_tests
@@ -43,7 +54,7 @@ KNOWN_PROJECTS = [
     "Regmain-VF", "FSL", "HYBRID_AUTOMATION_Pipeline",
 ]
 
-APP_VERSION = "2.1.0"  # Enhanced with AI features
+APP_VERSION = "2.2.0"  # Fixed timestamp display
 
 # -----------------------------------------------------------
 # HELPERS
@@ -258,6 +269,9 @@ if uploaded_files:
                 project_path = failures[0].get("projectCachePath", "")
                 detected_project = detect_project(project_path, xml_file.name)
                 
+                # ✅ CAPTURE TIMESTAMP FROM FIRST FAILURE
+                execution_time = failures[0].get("timestamp", "Unknown")
+                
                 normalized = []
                 for f in failures:
                     if f.get("name") != "__NO_FAILURES__":
@@ -278,8 +292,7 @@ if uploaded_files:
                 else:
                     new_f, existing_f = normalized, []
                 
-                # Store results
-                execution_time = failures[0].get("timestamp", "Unknown")
+                # ✅ STORE EXECUTION TIME IN RESULTS
                 st.session_state.all_results.append({
                     'filename': xml_file.name,
                     'project': detected_project,
@@ -288,7 +301,8 @@ if uploaded_files:
                     'new_count': len(new_f),
                     'existing_count': len(existing_f),
                     'total_count': len(normalized),
-                    'baseline_exists': baseline_exists
+                    'baseline_exists': baseline_exists,
+                    'execution_time': execution_time  # ✅ ADD THIS LINE
                 })
             
             progress_bar.progress((idx + 1) / len(uploaded_files))
@@ -360,13 +374,13 @@ if uploaded_files:
         
         # Individual file results
         for idx, result in enumerate(st.session_state.all_results):
+            # ✅ FORMAT THE TIMESTAMP
             formatted_time = format_execution_time(result.get("execution_time", "Unknown"))
 
             with st.expander(
-                 f"📄 {result['filename']} | {formatted_time} – Project: {result['project']}",
+                f"📄 {result['filename']} | ⏰ {formatted_time} – Project: {result['project']}",
                 expanded=False
-):
-
+            ):
                 
                 # Summary card for this file
                 render_summary_card(
@@ -387,23 +401,22 @@ if uploaded_files:
                     else:
                         for i, f in enumerate(result['new_failures']):
                             with st.expander(f"🆕 {i+1}. {f['testcase']}", expanded=False):
-                                 st.write("**Browser:**", f['webBrowserType'])
+                                st.write("**Browser:**", f['webBrowserType'])
 
-                            # Path (full width, readable)
-                                 st.markdown("**Path:**")
-                                 st.code(f['testcase_path'], language="text")
+                                # Path (full width, readable)
+                                st.markdown("**Path:**")
+                                st.code(f['testcase_path'], language="text")
 
-                                 # Error summary
-                                 st.error(f"Error: {f['error']}")
+                                # Error summary
+                                st.error(f"Error: {f['error']}")
 
-                             # Error details (copyable)
-                                 st.markdown("**Error Details (click copy icon):**")
-                                 st.code(f['details'], language="text")
-
+                                # Error details (copyable)
+                                st.markdown("**Error Details (click copy icon):**")
+                                st.code(f['details'], language="text")
 
                                 
                                 # AI Features
-                                 if use_ai:
+                                if use_ai:
                                     ai_tabs = []
                                     if True:  # Basic analysis always available
                                         ai_tabs.append("🤖 AI Analysis")
@@ -450,7 +463,7 @@ if uploaded_files:
                                                     )
                                                     st.success(improvements)
                                 
-                                 st.markdown("---")
+                                st.markdown("---")
                 
                 with tab2:
                     if result['existing_count'] == 0:
@@ -459,16 +472,13 @@ if uploaded_files:
                         st.warning(f"Found {result['existing_count']} known failures")
                         for i, f in enumerate(result['existing_failures']):
                             with st.expander(f"♻️ {i+1}. {f['testcase']}", expanded=False):
-                             col1, col2 = st.columns([1, 3])
-                            with col1:
-                                 st.write("**Browser:**", f['webBrowserType'])
-                                 st.markdown("**Path:**")
-                                 st.code(f['testcase_path'], language="text")
-                            with col2:
+                                st.write("**Browser:**", f['webBrowserType'])
+                                st.markdown("**Path:**")
+                                st.code(f['testcase_path'], language="text")
                                 st.error(f"Error: {f['error']}")
-                                st.markdown("**Error Details (click copy icon):**")
+                                st.markdown("**Error Details:**")
                                 st.code(f['details'], language="text")
-                            st.markdown("---")
+                                st.markdown("---")
                 
                 with tab3:
                     st.markdown("### 🛠️ Baseline Management")

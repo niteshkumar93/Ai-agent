@@ -14,13 +14,30 @@ def extract_failed_tests(xml_file) -> List[Dict]:
     root = tree.getroot()
 
     # --------------------------------------------------
-    # EXECUTION TIME (REPORT LEVEL)
+    # EXECUTION TIME (REPORT LEVEL) - MULTIPLE FORMATS
     # --------------------------------------------------
-    execution_time = (
-        root.attrib.get("timestamp")
-        or root.attrib.get("starttime")
-        or "Unknown"
-    )
+    execution_time = None
+    
+    # Try different timestamp attributes
+    for attr in ["timestamp", "time", "starttime", "start_time"]:
+        if root.attrib.get(attr):
+            execution_time = root.attrib.get(attr)
+            break
+    
+    # Try to find timestamp in properties
+    if not execution_time:
+        props_node = root.find("properties")
+        if props_node is not None:
+            for prop in props_node.findall("property"):
+                prop_name = prop.attrib.get("name", "").lower()
+                if "timestamp" in prop_name or "time" in prop_name:
+                    execution_time = prop.attrib.get("value")
+                    if execution_time:
+                        break
+    
+    # Default if not found
+    if not execution_time:
+        execution_time = "Unknown"
 
     # --------------------------------------------------
     # GLOBAL PROPERTIES (report-level)
@@ -50,7 +67,7 @@ def extract_failed_tests(xml_file) -> List[Dict]:
                 "details": (failure.text or "").strip(),
                 "webBrowserType": web_browser,
                 "projectCachePath": project_cache_path,
-                "timestamp": execution_time,   # ✅ ADD THIS
+                "timestamp": execution_time,
             })
 
     # --------------------------------------------------
@@ -64,7 +81,7 @@ def extract_failed_tests(xml_file) -> List[Dict]:
             "details": "",
             "webBrowserType": web_browser,
             "projectCachePath": project_cache_path,
-            "timestamp": execution_time,     # ✅ ADD THIS
+            "timestamp": execution_time,
             "_no_failures": True,
         }]
 
