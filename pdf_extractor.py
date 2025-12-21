@@ -3,18 +3,6 @@ from typing import List, Dict, Optional
 import re
 
 # --------------------------------------------------
-# SAFE PDF IMPORT
-# --------------------------------------------------
-try:
-    import pdfplumber
-except ImportError:
-    raise ImportError(
-        "PDF support missing. Run this in your venv:\n"
-        "python -m pip install pdfplumber"
-    )
-
-
-# --------------------------------------------------
 # MAIN ENTRY POINT
 # --------------------------------------------------
 def extract_pdf_failures(pdf_file) -> List[Dict]:
@@ -23,16 +11,28 @@ def extract_pdf_failures(pdf_file) -> List[Dict]:
     Uses icon + text parsing (✓ ⊛ ⊗ ✗ ⊙)
     """
 
+    # Lazy import (CRITICAL for Streamlit safety)
+    try:
+        import pdfplumber
+    except ImportError:
+        return create_no_failure_record(
+            message="pdfplumber not installed. PDF analysis unavailable."
+        )
+
     pdf_file.seek(0)
 
-    with pdfplumber.open(pdf_file) as pdf:
-        if not pdf.pages:
-            return create_no_failure_record("PDF has no pages")
+    try:
+        with pdfplumber.open(pdf_file) as pdf:
+            if not pdf.pages:
+                return create_no_failure_record("PDF has no pages")
 
-        full_text = ""
-        for page in pdf.pages:
-            page_text = page.extract_text() or ""
-            full_text += page_text + "\n"
+            full_text = ""
+            for page in pdf.pages:
+                page_text = page.extract_text() or ""
+                full_text += page_text + "\n"
+
+    except Exception as e:
+        return create_no_failure_record(f"PDF read error: {str(e)}")
 
     if not full_text.strip():
         return create_no_failure_record("Could not extract text from PDF")
@@ -106,7 +106,7 @@ def extract_metadata(text: str) -> Dict:
     metadata["time"] = time_match.group(1) if time_match else "Unknown"
 
     project_match = re.search(
-        r'(VF_Lightning_Windows|HYBRID_AUTOMATION_Pipeline|CPQ_\w+|QAM_\w+|Regmain[\w_-]+)',
+        r'(VF_Lightning_Windows|HYBRID_AUTOMATION_Pipeline|AutomationAPI_Flexi5|CPQ_\w+|QAM_\w+|Regmain[\w_-]+)',
         text
     )
     metadata["project"] = project_match.group(1) if project_match else ""
@@ -131,19 +131,18 @@ def find_testcase_sections_with_outcomes(text: str) -> List[tuple]:
         end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
         section = text[start:end]
 
-        if "Outcome" in section:
-            outcome = extract_outcome_status(section)
-            testcases.append((name, section, outcome))
+        outcome = extract_outcome_status(section)
+        testcases.append((name, section, outcome))
 
     return testcases
 
 
 def extract_outcome_status(section: str) -> str:
-    if re.search(r'Outcome.*(⊗|✗|failed)', section, re.IGNORECASE):
+    if re.search(r'(⊗|✗|failed)', section, re.IGNORECASE):
         return "failed"
-    if re.search(r'Outcome.*(⊛|✓|passed|successful)', section, re.IGNORECASE):
+    if re.search(r'(⊛|✓|passed|successful)', section, re.IGNORECASE):
         return "successful"
-    if re.search(r'Outcome.*(⊘|skipped)', section, re.IGNORECASE):
+    if re.search(r'(⊘|skipped)', section, re.IGNORECASE):
         return "skipped"
     return "unknown"
 
