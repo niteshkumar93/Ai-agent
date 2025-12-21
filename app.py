@@ -5,7 +5,6 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import io
 import os
-import streamlit as st
 from datetime import datetime
 
 # Import existing modules
@@ -396,6 +395,9 @@ else:
     st.markdown("## 📁 Upload PDF Reports")
     st.info("💡 PDF analysis extracts detailed step-by-step information including screenshots and error context")
     
+    # Debug mode toggle
+    show_debug = st.checkbox("🔍 Show Debug Info", value=False, help="Display extracted PDF text for debugging")
+    
     uploaded_pdf_files = st.file_uploader(
         "Choose PDF files",
         type=["pdf"],
@@ -406,6 +408,46 @@ else:
     
     if uploaded_pdf_files:
         st.success(f"✅ {len(uploaded_pdf_files)} PDF file(s) uploaded!")
+        
+        # Debug section
+        if show_debug and uploaded_pdf_files:
+            st.markdown("### 🐛 Debug: PDF Text Extraction")
+            debug_file = uploaded_pdf_files[0]
+            debug_file.seek(0)
+            
+            try:
+                import PyPDF2
+                reader = PyPDF2.PdfReader(debug_file)
+                
+                with st.expander("📄 First Page Preview (Click to expand)", expanded=False):
+                    first_page_text = reader.pages[0].extract_text()
+                    st.text_area("Extracted Text", first_page_text, height=300)
+                    
+                    # Analysis
+                    st.markdown("**Pattern Detection:**")
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        tc_count = len(re.findall(r'\.testcase', first_page_text))
+                        st.metric("Test Cases", tc_count)
+                    with col2:
+                        failed_count = len(re.findall(r'⊗|failed', first_page_text, re.IGNORECASE))
+                        st.metric("Failure Markers", failed_count)
+                    with col3:
+                        error_count = len(re.findall(r'error|exception', first_page_text, re.IGNORECASE))
+                        st.metric("Error Keywords", error_count)
+                    
+                    # Show what we found
+                    st.markdown("**Found Failed Test Cases:**")
+                    import pdf_extractor
+                    failed_names = pdf_extractor.extract_failed_testcase_names(first_page_text)
+                    if failed_names:
+                        for name in failed_names:
+                            st.code(name)
+                    else:
+                        st.warning("No failed test cases detected in summary")
+                        
+            except Exception as e:
+                st.error(f"Debug error: {e}")
         
         if 'pdf_results' not in st.session_state:
             st.session_state.pdf_results = []
