@@ -5,17 +5,11 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import io
 import os
-import re
 from datetime import datetime
 
 # Import existing modules
 from xml_extractor import extract_failed_tests
-from pdf_extractor import extract_pdf_failures
-from automation_api_extractor import (
-    extract_automation_api_failures, 
-    group_failures_by_spec, 
-    get_spec_summary
-)
+from pdf_extractor import extract_pdf_failures  # NEW
 from ai_reasoner import (
     generate_ai_summary, 
     generate_batch_analysis,
@@ -34,10 +28,9 @@ KNOWN_PROJECTS = [
     "DynamicForm", "Classic_Console_LogonAS", "LWC_Pipeline",
     "Regmain_LS_Windows", "Regmain_LC_Windows",
     "Regmain-VF", "FSL", "HYBRID_AUTOMATION_Pipeline",
-    "AutomationAPI_Flexi5",  # Added Automation API project
 ]
 
-APP_VERSION = "3.1.0"  # Added Automation API support
+APP_VERSION = "3.0.0"  # Added PDF support
 
 # -----------------------------------------------------------
 # HELPERS
@@ -67,13 +60,11 @@ def format_execution_time(raw_time: str):
     return raw_time
 
 def safe_extract_failures(uploaded_file, file_type='xml'):
-    """Extract failures from XML, PDF, or Automation API"""
+    """Extract failures from XML or PDF"""
     try:
         uploaded_file.seek(0)
         if file_type == 'pdf':
             return extract_pdf_failures(uploaded_file)
-        elif file_type == 'automation_api':
-            return extract_automation_api_failures(uploaded_file)
         else:
             return extract_failed_tests(uploaded_file)
     except Exception as e:
@@ -82,7 +73,7 @@ def safe_extract_failures(uploaded_file, file_type='xml'):
 
 def detect_project(path: str, filename: str):
     for p in KNOWN_PROJECTS:
-        if path and (f"/{p}" in path or f"\\{p}" in path or p in path):
+        if path and (f"/{p}" in path or f"\\{p}" in path):
             return p
         if p.lower() in filename.lower():
             return p
@@ -110,29 +101,15 @@ def render_summary_card(xml_name, new_count, existing_count, total_count):
     with col4:
         st.metric("Total Failures", total_count)
 
-def render_spec_summary_card(spec_name, summary_data):
-    """Render summary card for Automation API spec file"""
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        status = "🔴" if summary_data['root_failures'] > 0 else "🟡"
-        st.metric("Spec Status", status)
-    with col2:
-        st.metric("Root Failures", summary_data['root_failures'], 
-                 delta=f"+{summary_data['root_failures']}" if summary_data['root_failures'] > 0 else None,
-                 delta_color="inverse")
-    with col3:
-        st.metric("Cascading", summary_data['cascading_failures'])
-    with col4:
-        st.metric("Total Steps Failed", summary_data['total_failures'])
-
 def render_pdf_step_visualization(steps_data):
     """Visualize test steps with pass/fail status"""
     if not steps_data:
         return
     
+    # Create a visual step flow
     for idx, step in enumerate(steps_data):
         status_icon = "✅" if step['status'] == 'passed' else "❌" if step['status'] == 'failed' else "⚪"
+        status_color = "green" if step['status'] == 'passed' else "red" if step['status'] == 'failed' else "gray"
         
         col1, col2 = st.columns([1, 10])
         with col1:
@@ -183,25 +160,6 @@ st.markdown("""
         border-radius: 10px;
         background-color: #f0f8ff;
     }
-    .cascading-failure {
-        background-color: #fff3cd;
-        border-left: 4px solid #ffc107;
-        padding: 0.5rem;
-        margin: 0.3rem 0;
-    }
-    .root-failure {
-        background-color: #f8d7da;
-        border-left: 4px solid #dc3545;
-        padding: 0.5rem;
-        margin: 0.3rem 0;
-    }
-    .spec-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 1rem;
-        border-radius: 10px;
-        margin: 1rem 0;
-    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -216,13 +174,13 @@ with st.sidebar:
     # MODE SELECTOR
     analysis_mode = st.radio(
         "📊 Analysis Mode",
-        options=["XML Reports", "PDF Reports", "Automation API"],
-        help="Choose report type to analyze"
+        options=["XML Reports", "PDF Reports"],
+        help="Choose between XML or PDF report analysis"
     )
     
     st.markdown("---")
     
-    # AI Settings
+    # AI Settings (common for both modes)
     st.header("⚙️ Configuration")
     st.subheader("🤖 AI Features")
     use_ai = st.checkbox("Enable AI Analysis", value=False, help="Use Groq AI for intelligent failure analysis")
@@ -353,7 +311,7 @@ if analysis_mode == "XML Reports":
                 'new_failures': new_failures
             }
         
-        # Display XML results
+        # Display XML results (existing code continues...)
         if st.session_state.all_results:
             st.markdown("## 📊 XML Analysis Results")
             
@@ -388,7 +346,7 @@ if analysis_mode == "XML Reports":
                                     st.markdown("**Error Details:**")
                                     st.code(f['details'], language="text")
                                     
-                                    # AI Features
+                                    # AI Features (existing code)
                                     if use_ai:
                                         with st.spinner("Analyzing..."):
                                             ai_analysis = generate_ai_summary(f['testcase'], f['error'], f['details'])
@@ -430,8 +388,8 @@ if analysis_mode == "XML Reports":
     else:
         st.info("👆 Upload XML files to begin analysis")
 
-elif analysis_mode == "PDF Reports":
-    # ========== EXISTING PDF ANALYZER ==========
+else:
+    # ========== NEW PDF ANALYZER ==========
     st.markdown('<div class="main-header">📑 PDF Report Analysis with Visual Steps</div>', unsafe_allow_html=True)
     
     st.markdown("## 📁 Upload PDF Reports")
@@ -691,69 +649,54 @@ elif analysis_mode == "PDF Reports":
                                     if f.get('failed_step'):
                                         st.markdown("**Failed Step:**")
                                         st.code(f['failed_step'], language="text")
-                
-                with tab3:
-                    st.markdown("### 🛠️ Baseline Management")
                     
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        if st.button(f"💾 Save as Baseline", key=f"save_{idx}"):
-                            if not admin_key:
-                                st.error("❌ Admin key required!")
+                    with tab3:
+                        st.markdown("### 🛠️ Baseline Management")
+                        
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            if st.button(f"💾 Save as Baseline", key=f"save_pdf_{idx}"):
+                                if not admin_key:
+                                    st.error("❌ Admin key required!")
+                                else:
+                                    try:
+                                        all_failures = result['new_failures'] + result['existing_failures']
+                                        save_baseline(result['project'], all_failures, admin_key)
+                                        st.success("✅ Baseline saved successfully!")
+                                    except Exception as e:
+                                        st.error(f"❌ Error: {str(e)}")
+                        
+                        with col2:
+                            if result['baseline_exists']:
+                                st.success("✅ Baseline exists")
                             else:
-                                try:
-                                    all_failures = result['new_failures'] + result['existing_failures']
-                                    save_baseline(result['project'], all_failures, admin_key)
-                                    st.success("✅ Baseline saved successfully!")
-                                except Exception as e:
-                                    st.error(f"❌ Error: {str(e)}")
-                    
-                    with col2:
-                        if result['baseline_exists']:
-                            st.success("✅ Baseline exists for this project")
-                        else:
-                            st.warning("⚠️ No baseline found")
-                    
-                    # Export options
-                    st.markdown("### 📤 Export Options")
-                    export_data = pd.DataFrame(result['new_failures'] + result['existing_failures'])
-                    
-                    if not export_data.empty:
-                        csv = export_data.to_csv(index=False)
-                        st.download_button(
-                            label="📥 Download as CSV",
-                            data=csv,
-                            file_name=f"{result['filename']}_failures.csv",
-                            mime="text/csv",
-                            key=f"export_{idx}"
-                        )
-
-else:
-    # Welcome message when no files uploaded
-    st.info("👆 Upload one or more XML files to begin AI-powered analysis")
+                                st.warning("⚠️ No baseline found")
+                        
+                        # Export
+                        st.markdown("### 📤 Export Options")
+                        export_data = pd.DataFrame(result['new_failures'] + result['existing_failures'])
+                        
+                        if not export_data.empty:
+                            csv = export_data.to_csv(index=False)
+                            st.download_button(
+                                label="📥 Download as CSV",
+                                data=csv,
+                                file_name=f"{result['filename']}_failures.csv",
+                                mime="text/csv",
+                                key=f"export_pdf_{idx}"
+                            )
     
-    st.markdown("### 🎯 Features")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.markdown("**📊 Multi-File Analysis**")
-        st.write("Upload and analyze multiple XML reports simultaneously")
-    with col2:
-        st.markdown("**🤖 AI-Powered Insights**")
-        st.write("Get intelligent failure analysis with Groq (FREE)")
-    with col3:
-        st.markdown("**📈 Baseline Tracking**")
-        st.write("Compare results against historical baselines")
-    
-    st.markdown("---")
-    
-    st.markdown("### 🆕 New AI Features")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.markdown("**🧠 Batch Pattern Analysis**")
-        st.write("AI identifies common patterns across all failures")
-    with col2:
-        st.markdown("**📝 Jira Auto-Generation**")
-        st.write("Create ready-to-use Jira tickets instantly")
-    with col3:
-        st.markdown("**💡 Test Improvements**")
-        st.write("Get suggestions to make tests more stable")
+    else:
+        st.info("👆 Upload PDF files to begin detailed step-by-step analysis")
+        
+        st.markdown("### 🎯 PDF Analysis Features")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.markdown("**📋 Step-by-Step Details**")
+            st.write("See exactly which step failed with pass/fail markers")
+        with col2:
+            st.markdown("**📸 Screenshot Context**")
+            st.write("View screenshot references at the point of failure")
+        with col3:
+            st.markdown("**🔍 Error Context**")
+            st.write("Understand the flow with previous and next steps")
