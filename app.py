@@ -221,6 +221,15 @@ st.markdown('<div class="main-header">🤖 Provar AI - Multi-Platform Report Ana
 # SIDEBAR CONFIGURATION
 # -----------------------------------------------------------
 with st.sidebar:
+    st.subheader("🧭 Navigation")
+    page = st.radio(
+        "Go to:",
+        options=[
+            "📁 Provar Reports",
+            "📊 Baseline Tracker"
+            ],
+            index=0
+            )
     st.header("⚙️ Configuration")
     
     # NEW: Radio button for report type selection
