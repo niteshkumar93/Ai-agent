@@ -7,7 +7,7 @@ from plotly.subplots import make_subplots
 import io
 import os
 from datetime import datetime
-
+from baseline_tracker_dashboard import render_baseline_tracker_dashboard
 # -----------------------------------------------------------
 # HELPER FUNCTIONS
 # -----------------------------------------------------------
@@ -54,7 +54,7 @@ from baseline_manager import (
 )
 
 # -----------------------------------------------------------
-# IMPORT AUTOMATIONAPI MODULES (NEW)
+# IMPORT AUTOMATIONAPI MODULES
 # -----------------------------------------------------------
 from automation_api_extractor import (
     extract_automation_api_failures,
@@ -285,10 +285,10 @@ with st.sidebar:
 if page == "📈 Baseline Tracker":
     render_baseline_tracker_dashboard()
 else: 
-    st.markdown("## 📁 Upload Provar XML Reports")
-    st.markdown("Upload multiple JUnit XML reports from Provar test executions for simultaneous AI-powered analysis")
+     st.markdown("## 📁 Upload Provar XML Reports")
+     st.markdown("Upload multiple JUnit XML reports from Provar test executions for simultaneous AI-powered analysis")
     
-    uploaded_files = st.file_uploader(
+     uploaded_files = st.file_uploader(
         "Choose Provar XML files",
         type=["xml"],
         accept_multiple_files=True,
@@ -296,7 +296,7 @@ else:
         help="Select one or more XML files to analyze"
     )
     
-    if uploaded_files:
+     if uploaded_files:
         st.success(f"✅ {len(uploaded_files)} Provar file(s) uploaded successfully!")
         
         # Initialize session state for results
