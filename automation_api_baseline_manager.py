@@ -1,6 +1,7 @@
 import json
 import os
 from typing import List, Dict
+from baseline_history_manager import save_baseline_history
 
 # Separate baseline directory for AutomationAPI
 BASELINE_DIR = "baselines/automation_api"
@@ -35,7 +36,7 @@ def load_baseline(project_name: str) -> List[Dict]:
 
 
 def save_baseline(project_name: str, failures: List[Dict], admin_key: str):
-    """Save baseline for AutomationAPI project (admin only)"""
+    """Save baseline for AutomationAPI project (admin only) WITH HISTORY TRACKING"""
     expected = os.getenv("BASELINE_ADMIN_KEY")
     if not expected:
         raise RuntimeError("❌ BASELINE_ADMIN_KEY not configured")
@@ -56,9 +57,13 @@ def save_baseline(project_name: str, failures: List[Dict], admin_key: str):
             }
             clean_failures.append(clean_failure)
     
+    # Save current baseline
     path = _get_baseline_path(project_name)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(clean_failures, f, indent=2)
+    
+    # 🆕 SAVE TO HISTORY
+    save_baseline_history(project_name, clean_failures, "automation_api")
 
 
 def compare_with_baseline(project_name: str, current_failures: List[Dict]):

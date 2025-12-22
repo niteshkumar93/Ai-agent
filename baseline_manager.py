@@ -1,10 +1,11 @@
-# baseline_manager.py
+# baseline_manager.py - UPDATED WITH HISTORY TRACKING
 
 import json
 import os
 import base64
 import requests
 from typing import List, Dict
+from baseline_history_manager import save_baseline_history
 
 # -----------------------------------------------------------
 # CONFIG
@@ -33,6 +34,11 @@ KNOWN_PROJECTS = [
     "Regmain-VF",
     "FSL",
     "HYBRID_AUTOMATION_Pipeline",
+    "Prerelease-Lightning",
+    "Smoke_LC_Windows",
+    "Smoke_CC_Windows",
+    "Smoke_LS_Windows",
+    "Smoke_CS_Windows",
 ]
 
 # -----------------------------------------------------------
@@ -54,10 +60,7 @@ def list_available_baselines() -> List[str]:
 
 
 def baseline_exists(project_name: str) -> bool:
-    """
-    A baseline EXISTS if the file exists,
-    even if it contains an empty list []
-    """
+    """A baseline EXISTS if the file exists, even if it contains an empty list []"""
     return os.path.exists(_get_baseline_path(project_name))
 
 # -----------------------------------------------------------
@@ -80,7 +83,7 @@ def load_baseline(project_name: str) -> List[Dict]:
         return []
 
 # -----------------------------------------------------------
-# SAVE BASELINE (ADMIN ONLY, ALLOWS EMPTY BASELINE)
+# SAVE BASELINE (ADMIN ONLY, WITH HISTORY TRACKING)
 # -----------------------------------------------------------
 def save_baseline(project_name: str, failures: List[Dict], admin_key: str):
     expected = os.getenv("BASELINE_ADMIN_KEY")
@@ -90,10 +93,13 @@ def save_baseline(project_name: str, failures: List[Dict], admin_key: str):
     if admin_key != expected:
         raise PermissionError("❌ Admin key invalid")
 
-    # 🔑 IMPORTANT: allow empty baseline []
+    # Save current baseline
     path = _get_baseline_path(project_name)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(failures or [], f, indent=2)
+
+    # 🆕 SAVE TO HISTORY
+    save_baseline_history(project_name, failures or [], "provar")
 
     _commit_to_github(project_name, failures or [])
 
@@ -169,7 +175,7 @@ def get_baseline_history(project_name: str):
     return r.json() if r.status_code == 200 else []
 
 # -----------------------------------------------------------
-# 🔁 ROLLBACK BASELINE (UNCHANGED)
+# ROLLBACK BASELINE (UNCHANGED)
 # -----------------------------------------------------------
 def rollback_baseline(project_name: str, commit_sha: str, admin_key: str):
     ADMIN_KEY = os.getenv("BASELINE_ADMIN_KEY")

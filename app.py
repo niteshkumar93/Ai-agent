@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+from baseline_manager import save_baseline, load_baseline
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -71,14 +72,13 @@ from automation_api_baseline_manager import (
 # CONSTANTS
 # -----------------------------------------------------------
 KNOWN_PROJECTS = [
-    "VF_Lightning_Windows", "Regmain-Flexi", "Date_Time",
+    "VF_Lightning_Windows", "Regmain-Flexi", "DateTime",
     "CPQ_Classic", "CPQ_Lightning", "QAM_Lightning", "QAM_Classic",
     "Internationalization_pipeline", "Lightning_Console_LogonAs",
     "DynamicForm", "Classic_Console_LogonAS", "LWC_Pipeline",
-    "Regmain_LS_Windows", "Regmain_LC_Windows",
-    "Regmain-VF", "FSL", "HYBRID_AUTOMATION_Pipeline",
-   #automationAPI Known Projects
-
+    "Regmain_LS_Windows", "Regmain_LC_Windows", "Prerelease-Lightning",
+    "Regmain-VF", "FSL", "HYBRID_AUTOMATION_Pipeline", "Smoke_LC_Windows",
+    "Smoke_CC_Windows", "Smoke_LS_Windows", "Smoke_CS_Windows",
 ]
 
 APP_VERSION = "3.0.0"  # New version with AutomationAPI support
@@ -100,7 +100,9 @@ def detect_project(path: str, filename: str):
             return p
         if p.lower() in filename.lower():
             return p
-    return KNOWN_PROJECTS[0]
+    if "datetime" in filename.lower():
+        return "Date_Time"
+    return "UNKNOWN_PROJECT"
 
 def shorten_project_cache_path(path):
     if not path:
@@ -132,7 +134,7 @@ def render_comparison_chart(all_results):
     df_data = []
     for result in all_results:
         df_data.append({
-            'File': result['filename'][:30] + '...' if len(result['filename']) > 30 else result['filename'],
+            'File': result['project'],
             'New Failures': result['new_count'],
             'Existing Failures': result['existing_count'],
             'Total': result['total_count']
@@ -280,6 +282,26 @@ with st.sidebar:
 # -----------------------------------------------------------
 # MAIN CONTENT AREA
 # -----------------------------------------------------------
+if page == "📈 Baseline Tracker":
+    render_baseline_tracker_dashboard()
+else: 
+    st.markdown("## 📁 Upload Provar XML Reports")
+    st.markdown("Upload multiple JUnit XML reports from Provar test executions for simultaneous AI-powered analysis")
+    
+    uploaded_files = st.file_uploader(
+        "Choose Provar XML files",
+        type=["xml"],
+        accept_multiple_files=True,
+        key="provar_uploader",
+        help="Select one or more XML files to analyze"
+    )
+    
+    if uploaded_files:
+        st.success(f"✅ {len(uploaded_files)} Provar file(s) uploaded successfully!")
+        
+        # Initialize session state for results
+        if 'all_results' not in st.session_state:
+            st.session_state.all_results = []
 
 if report_type == "Provar Regression Reports":
     # ============================================================
@@ -525,7 +547,17 @@ if report_type == "Provar Regression Reports":
                     
                     with tab3:
                         st.markdown("### 🛠️ Baseline Management")
-                        
+                        st.markdown("### 📌 Select Project for Baseline")
+                        project_options = KNOWN_PROJECTS
+                        selected_project = result['project']
+                        if result['project'] == "UNKNOWN_PROJECT":
+                            selected_project = st.selectbox(
+                                "Choose correct project",
+                                options=project_options,
+                                 key=f"project_select_{idx}"
+                                 )
+                        else:
+                            st.info(f"Detected Project: {result['project']}")
                         col1, col2 = st.columns(2)
                         with col1:
                             if st.button(f"💾 Save as Baseline", key=f"save_provar_{idx}"):
@@ -534,7 +566,11 @@ if report_type == "Provar Regression Reports":
                                 else:
                                     try:
                                         all_failures = result['new_failures'] + result['existing_failures']
-                                        save_provar_baseline(result['project'], all_failures, admin_key)
+                                        if selected_project == "UNKNOWN_PROJECT":
+                                            st.error("Please select a project before saving baseline.")
+                                        else:
+                                            save_baseline(selected_project, all_failures, admin_key)
+                                            st.success("Baseline saved successfully!")    
                                         st.success("✅ Provar baseline saved successfully!")
                                     except Exception as e:
                                         st.error(f"❌ Error: {str(e)}")
